@@ -79,6 +79,25 @@ header{gap:6px}
 .tbar{display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#34d399,#fbbf24,#ef4444)}
 input[type=range]{padding:0;height:34px}
 .leaflet-popup-content{font:13px/1.4 system-ui;color:#0b1220}
+body.race{--rok:#5EE08A;--ramb:#FFB224;--rmut:#A9B4C2;--rcard:#151A21;--rline:#232B36;background:#0B0D10;padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+.rc{min-height:calc(100vh - 120px);display:flex;flex-direction:column;gap:12px;padding-top:calc(14px + env(safe-area-inset-top));font-family:Inter,system-ui,sans-serif}
+.rtop{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;font-weight:500;color:var(--rmut)}.rclk{font-weight:700;color:#F5F7FA}
+.rcard{background:var(--rcard);border-radius:24px;padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.rl{font-size:18px;font-weight:500;color:var(--rmut)}.rbig{font-size:64px;line-height:1;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}.rsm{font-size:26px;font-weight:700}
+.rname{font-size:28px;line-height:1.1;font-weight:800}.rrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.rcol{display:flex;flex-direction:column;align-items:flex-end}
+.rnum{font-size:46px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}.rtime{font-size:32px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums}
+.rbarw{display:flex;flex-direction:column;gap:10px}.rbar{height:16px;border-radius:8px;background:#232B36;overflow:hidden}.rbar div{height:100%;border-radius:8px;background:#7CC4FF}
+.rrow2{display:flex;justify-content:space-between;font-size:20px;font-weight:500;color:var(--rmut)}.rrow2 b{color:#F5F7FA}
+.rbtn{display:flex;align-items:center;justify-content:center;gap:12px;min-height:88px;border-radius:24px;border:0;background:var(--ramb);color:#0B0D10;font:800 26px Inter,system-ui,sans-serif;width:100%}.rbtn.ok{background:var(--rok);min-height:96px;font-size:30px}.rbtn.ghost{background:var(--rcard);color:#F5F7FA;border:2px solid #3A4553;min-height:72px;font-size:22px}
+.rgps{background:#232B36;border:0;color:#F5F7FA;border-radius:12px;padding:6px 10px;vertical-align:middle;margin-left:6px}.rlink{background:none;border:0;color:var(--rmut);font:600 18px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px}
+.rnav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0B0D10;border-top:1px solid var(--rline);max-width:640px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom);z-index:7}
+.rnav button{flex:1;min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--rmut);font:700 16px Inter,system-ui,sans-serif;background:none;border:0;border-top:4px solid transparent}.rnav button.on{color:var(--ramb);border-top-color:var(--ramb)}
+.rh1{margin:0;font-size:30px;font-weight:800}.rstrip{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:var(--rcard);font-size:18px;font-weight:500;color:var(--rmut)}
+.rnext{border:3px solid var(--ramb);background:var(--rcard);border-radius:24px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}.rtag{font-size:18px;font-weight:700;color:var(--ramb)}
+.rli{display:flex;justify-content:space-between;align-items:center;padding:12px 8px;border-bottom:1px solid var(--rline)}.rli1{font-size:24px;font-weight:700}.rli2{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.rback{display:flex;align-items:center;gap:8px;min-height:56px;font:700 22px Inter,system-ui,sans-serif;color:var(--rmut);background:none;border:0;padding:0}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.rb2{min-height:88px;border-radius:24px;border:2px solid #3A4553;background:var(--rcard);color:#F5F7FA;font:800 30px Inter,system-ui,sans-serif}
+.rsel{background:var(--rcard);border:1px solid #3A4553;color:#F5F7FA;border-radius:14px;padding:10px 14px;font:600 16px Inter,system-ui,sans-serif}
 .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font:inherit;font-size:14px}.seg button.on{background:var(--card2);color:var(--tx);border-color:var(--acc);font-weight:600}
 .calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;text-transform:capitalize}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cw{font-size:11px;color:var(--mut)}
@@ -322,7 +341,7 @@ const LOGO = '<svg viewBox="0 0 64 64" width="30" height="30" fill="none" stroke
 let G = { v: 2, rides: [], cur: null };
 let S = null; // circuit ouvert (objet de G.rides)
 let memOnly = false;
-let ui = { home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
+let ui = { rtab: 'run', rsel: 0, rt0: 0, roff: 0, home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
 let mapObj = null, wxLayer = null, mapAll = null;
 
 function newRide(name) {
@@ -433,7 +452,7 @@ function renderDash() {
   const elapsed = Math.max(0, now - dep);
   const pill = now < dep ? 'Départ dans ' + (Math.floor((dep - now) / 86400e3) ? Math.floor((dep - now) / 86400e3) + ' j ' : '') + fmtDur((dep - now) % 86400e3)
     : st.done ? 'Arrivée !' : 'En course';
-  let hero = '<div class="card hero"><span class="pill">' + pill + '</span>';
+  let hero = '<button class="b" data-act="race-on" style="width:100%;margin-bottom:12px">🏁 Mode course (affichage épuré)</button><div class="card hero"><span class="pill">' + pill + '</span>';
   if (rd) {
     const d = st.delta, good = d >= 0, w = Math.abs(d) < 15 * 60e3;
     hero += '<div class="big ' + (w ? 'warn' : good ? 'ok' : 'bad') + '">' + (w ? 'dans le plan' : (good ? '+' : '−') + fmtDur(d)) + '</div>' +
@@ -742,8 +761,105 @@ function renderLog() {
   return h;
 }
 
+// ===== Mode course (épuré) =====
+const hm = ms => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const dayS = ms => new Date(ms).toLocaleDateString('fr-FR', { weekday: 'short' });
+const mins = ms => { const m = Math.round(Math.abs(ms) / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + pad(m % 60); };
+const IC = {
+  pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  cloud: '<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 0 9z"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  gps: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'
+};
+const svg = (n, sz = 28, sw = 2.2, col = 'currentColor') => '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+function raceCtx() {
+  const P = curPlan(), rd = lastReading(), st = computeStatus(P, rd, S.limitH, S.mode);
+  const nxt = rd ? (st.etas && st.etas[0]) : { name: P[1].name, km: P[1].km, eta: P[1].arr, stop: P[1].stop };
+  const pn = nxt && P.find(c => c.km === nxt.km && c.name === nxt.name);
+  return { P, rd, st, nxt, planned: pn ? pn.arr : null, stages: S.controls.length > 1 };
+}
+function raceNav(stages) {
+  const t = (id, ic, l) => '<button data-rt="' + id + '" class="' + (ui.rtab === id ? 'on' : '') + '">' + svg(ic) + '<span>' + l + '</span></button>';
+  return '<div class="rnav">' + t('run', 'clock', 'Course') + (stages ? t('steps', 'list', 'Étapes') : '') + t('wx', 'cloud', 'Météo') + '<button data-act="race-off">' + svg('menu') + '<span>Détails</span></button></div>';
+}
+function renderRace() {
+  if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
+  const c = raceCtx();
+  if (!c.stages && ui.rtab === 'steps') ui.rtab = 'run';
+  const body = ui.rtab === 'punch' ? racePunch(c) : ui.rtab === 'steps' ? raceSteps(c) : ui.rtab === 'wx' ? raceWx(c) : raceRun(c);
+  return '<div class="rc">' + body + '</div>' + (ui.rtab === 'punch' ? '' : raceNav(c.stages));
+}
+function raceRun(c) {
+  const { rd, st, nxt, P } = c, total = st.total, now = Date.now();
+  let dl;
+  if (rd) {
+    const d = st.delta, col = d >= 0 ? 'var(--rok)' : 'var(--ramb)', done = st.done;
+    dl = '<div class="rcard"><span class="rl">Par rapport au prévu</span><span class="rbig" style="color:' + col + '">' + (done ? 'Arrivé' : (d >= 0 ? '+' : '−') + mins(d)) + '</span>' + (done ? '' : '<span class="rsm" style="color:' + col + '">' + (d >= 0 ? "d'avance" : 'de retard') + '</span>') + '</div>';
+  } else if (now < S.depMs) {
+    const l = S.depMs - now, dd = Math.floor(l / 86400e3);
+    dl = '<div class="rcard"><span class="rl">Départ dans</span><span class="rbig">' + (dd ? dd + ' j ' + Math.floor((l % 86400e3) / 3600e3) + ' h' : mins(l)) + '</span><span class="rsm" style="color:var(--rmut)">' + dayS(S.depMs) + ' ' + hm(S.depMs) + '</span></div>';
+  } else dl = '<div class="rcard"><span class="rl">Par rapport au prévu</span><span class="rbig" style="color:var(--rmut)">—</span><span class="rsm" style="color:var(--rmut)">touche 📍 pour te localiser</span></div>';
+  const kmNow = rd ? rd.km : 0, rem = rd ? st.remKm : total, finish = rd ? st.finish : st.plannedFinish;
+  let nx = '';
+  if (rd && st.done) nx = '';
+  else if (c.stages && nxt) {
+    const last = nxt.km >= total - 0.5, away = Math.max(0, nxt.km - kmNow);
+    nx = '<div class="rcard"><span class="rl">' + (last ? 'Arrivée' : 'Prochaine étape') + '</span>' + (last ? '' : '<span class="rname">' + esc(nxt.name) + '</span>') +
+      '<div class="rrow"><span class="rnum">' + away.toFixed(0) + ' km</span><div class="rcol"><span class="rtime">' + hm(nxt.eta) + '</span><span class="rl">' + (c.planned ? 'prévu ' + hm(c.planned) : '') + '</span></div></div></div>';
+  } else nx = '<div class="rcard"><span class="rl">Arrivée</span><div class="rrow"><span class="rnum">' + rem.toFixed(0) + ' km</span><div class="rcol"><span class="rtime">' + hm(finish) + '</span><span class="rl">' + dayS(finish) + ' · prévu ' + hm(st.plannedFinish) + '</span></div></div></div>';
+  const lim = S.kind !== 'Sortie' && rd ? '<div class="rl" style="text-align:center">Marge sur ' + limLabel(S.limitH) + ' : <b style="color:' + (st.margin < 0 ? 'var(--ramb)' : 'var(--rok)') + '">' + (st.margin < 0 ? '−' : '+') + mins(st.margin) + '</b></div>' : '';
+  const bottom = c.stages
+    ? '<div class="rrow2"><span>Reste <b>' + rem.toFixed(0) + ' km</b></span><span>Arrivée <b>' + dayS(finish) + ' ' + hm(finish) + '</b></span></div>'
+    : '<div class="rrow2"><span>Fait <b>' + kmNow.toFixed(0) + ' km</b></span><span>Durée <b>' + (rd ? mins(rd.t - S.depMs) : '—') + '</b></span></div>';
+  const btn = c.stages && !(rd && st.done)
+    ? '<button class="rbtn" data-act="rpunch">' + svg('pin', 32, 2.6, '#0B0D10') + '<span>Je suis à l’étape</span></button>'
+    : '<button class="rbtn" data-act="gps">' + svg('gps', 32, 2.6, '#0B0D10') + '<span>Ma position</span></button>';
+  return '<div class="rtop"><span>Km ' + kmNow.toFixed(0) + ' / ' + total.toFixed(0) + '</span><span class="rclk">' + hm(now) + ' <button class="rgps" data-act="gps" aria-label="Position GPS">' + svg('gps', 22, 2.4) + '</button></span></div>' + dl + nx +
+    '<div class="rbarw"><div class="rbar"><div style="width:' + (Math.min(1, kmNow / total) * 100).toFixed(1) + '%"></div></div>' + bottom + '</div>' + lim +
+    (ui.msg ? '<div class="rl" style="text-align:center">' + esc(ui.msg) + '</div>' : '') +
+    '<div style="flex:1"></div>' + btn;
+}
+function raceSteps(c) {
+  const { P, rd, st } = c;
+  const done = rd ? P.slice(1).filter(x => x.km <= rd.km + 0.3) : [], last = done[done.length - 1];
+  let strip = '';
+  if (last) { const a = actualAt(S.log, last.km, S.depMs), d = a ? last.arr - a.t : null; strip = '<div class="rstrip">' + svg('check', 26, 2.6, 'var(--rok)') + '<span>' + done.length + ' étape' + (done.length > 1 ? 's' : '') + ' passée' + (done.length > 1 ? 's' : '') + ' · dernière ' + esc(last.name) + (a ? ' ' + hm(a.t) : '') + (d != null ? ' <b style="color:' + (d >= 0 ? 'var(--rok)' : 'var(--ramb)') + '">' + (d >= 0 ? '+' : '−') + mins(d) + '</b>' : '') + '</span></div>'; }
+  const list = rd ? st.etas.map(e => ({ name: e.name, km: e.km, t: e.eta, p: (P.find(x => x.km === e.km && x.name === e.name) || {}).arr })) : P.slice(1).map(x => ({ name: x.name, km: x.km, t: x.arr, p: x.arr }));
+  const nx = list[0];
+  const card = nx ? '<div class="rnext"><div class="rcol" style="align-items:flex-start;gap:2px"><span class="rtag">PROCHAINE · km ' + nx.km.toFixed(0) + '</span><span class="rname" style="font-size:28px">' + esc(nx.name) + '</span><span class="rl">prévu ' + hm(nx.p) + '</span></div><span class="rtime" style="font-size:40px">' + hm(nx.t) + '</span></div>' : '';
+  const rest = list.slice(1).map(e => '<div class="rli"><div class="rcol" style="align-items:flex-start;gap:2px"><span class="rli1">' + esc(e.name) + '</span><span class="rl">km ' + e.km.toFixed(0) + ' · ' + dayS(e.t) + '</span></div><span class="rli2">' + hm(e.t) + '</span></div>').join('');
+  return '<h1 class="rh1">Feuille de route</h1>' + strip + card + rest;
+}
+function raceWx(c) {
+  const w = S.weather;
+  let h = '<h1 class="rh1">Météo</h1>';
+  if (!w || !w.items.length) h += '<div class="rcard"><span class="rl">Pas encore de données.</span><span class="rl">Touche « Actualiser » (réseau requis).</span></div>';
+  else h += w.items.map(i => i.na
+    ? '<div class="rli"><div class="rcol" style="align-items:flex-start"><span class="rli1">' + esc(i.label) + '</span><span class="rl">hors prévision</span></div><span class="rli2">' + hm(i.ts) + '</span></div>'
+    : '<div class="rli"><div class="rcol" style="align-items:flex-start;gap:2px"><span class="rli1">' + esc(i.label) + '</span><span class="rl">' + hm(i.ts) + ' · ' + (i.rain > 0 ? i.rain.toFixed(1) + ' mm' : 'sec') + '</span></div>' +
+      '<div class="rcol" style="align-items:flex-end;gap:2px"><span class="rli2">' + WX(i.code) + ' ' + Math.round(i.temp) + '°</span><span class="rl" style="color:' + (i.wind.t === 'face' ? 'var(--ramb)' : i.wind.t === 'dos' ? 'var(--rok)' : 'var(--rmut)') + '">vent ' + i.wind.t + ' ' + i.wind.v + ' km/h</span></div></div>').join('');
+  return h + (w ? '<div class="rl" style="text-align:center">Mis à jour ' + ago(w.at) + '</div>' : '') + (ui.wxMsg ? '<div class="rl" style="text-align:center">' + esc(ui.wxMsg) + '</div>' : '') +
+    '<button class="rbtn ghost" data-act="wxrefresh"><span>↻ Actualiser</span></button>';
+}
+function racePunch(c) {
+  const { P, rd, st } = c, i = ui.rsel;
+  const ctl = S.controls[i], pl = P[i + 1], t = ui.rt0 + ui.roff * 60000, d = pl.arr - t;
+  return '<button class="rback" data-act="rback">' + '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span>Retour</span></button>' +
+    '<div class="rcol" style="align-items:flex-start;gap:4px"><span class="rl">J’arrive à l’étape</span><span class="rname" style="font-size:36px">' + esc(ctl.name) + '</span>' +
+    '<div class="rrow2" style="gap:12px;margin-top:4px"><button class="rsel" data-act="rsel-prev">‹ précédente</button><button class="rsel" data-act="rsel-next">suivante ›</button></div></div>' +
+    '<div class="rcard" style="align-items:center"><span class="rl">Heure de passage</span><span class="rbig" style="font-size:104px">' + hm(t) + '</span><span class="rsm" style="color:' + (d >= 0 ? 'var(--rok)' : 'var(--ramb)') + '">' + (Math.abs(d) < 60000 ? 'pile dans le plan' : mins(d) + (d >= 0 ? " d'avance" : ' de retard')) + '</span></div>' +
+    '<div class="rgrid"><button class="rb2" data-act="rminus">−5 min</button><button class="rb2" data-act="rplus">+5 min</button></div>' +
+    '<div style="flex:1"></div><button class="rbtn ok" data-act="rok">' + svg('check', 34, 3, '#0B0D10') + '<span>Valider</span></button>';
+}
+function raceStart() { S.raceMode = true; ui.rtab = 'run'; ui.msg = ''; save(); render(); updateGPS(true); }
+function raceNextIdx() { const c = raceCtx(); if (c.rd && c.st.done) return S.controls.length - 1; const k = c.nxt ? S.controls.findIndex(x => x.km === c.nxt.km && x.name === c.nxt.name) : -1; return k < 0 ? 0 : k; }
+
 // ===== Rendu général =====
 function renderHeader() {
+  if (S && S.raceMode && S.track) return;
   $('#hdr').innerHTML = S
     ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small>'
     : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small>';
@@ -751,13 +867,14 @@ function renderHeader() {
 function render() {
   if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; routeLayer = null; arrowLayer = null; }
   renderHeader();
-  $('#nav').style.display = S ? 'flex' : 'none';
+  const race = !!(S && S.raceMode && S.track); document.body.classList.toggle('race', race);
+  $('#hdr').style.display = race ? 'none' : ''; $('#nav').style.display = S && !race ? 'flex' : 'none';
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
-  $('#dock').style.display = S && S.track && (ui.tab === 'dash' || ui.tab === 'route') ? 'flex' : 'none';
+  $('#dock').style.display = !race && S && S.track && (ui.tab === 'dash' || ui.tab === 'route') ? 'flex' : 'none';
   const y = window.scrollY;
-  $('#app').innerHTML = !S ? renderHome() : ui.tab === 'dash' ? renderDash() : ui.tab === 'route' ? renderRoute() : ui.tab === 'map' ? renderMap() : ui.tab === 'plan' ? renderPlan() : renderLog();
+  $('#app').innerHTML = !S ? renderHome() : race ? renderRace() : ui.tab === 'dash' ? renderDash() : ui.tab === 'route' ? renderRoute() : ui.tab === 'map' ? renderMap() : ui.tab === 'plan' ? renderPlan() : renderLog();
   window.scrollTo(0, y);
-  if (S && ui.tab === 'map') initMap();
+  if (S && !race && ui.tab === 'map') initMap();
 }
 
 // ===== Actions =====
@@ -800,7 +917,7 @@ async function refreshWeather(force) {
     });
     ride.weather = { at: Date.now(), km: rd ? Math.round(rd.km) : 0, items }; ui.wxMsg = ''; save();
   } catch (e) { ui.wxMsg = 'Météo indisponible (réseau). Dernières données conservées.'; }
-  if (S === ride && ui.tab === 'dash') render();
+  if (S === ride && (ui.tab === 'dash' || S.raceMode) && ui.rtab !== 'punch') render();
 }
 function resetControls() { S.controls = S.kind === 'PBP' ? defaultControls(S.track) : S.controls.slice(-1).map(c => Object.assign({}, c, { speed: S.speed })); save(); }
 async function createRide(file) {
@@ -827,7 +944,7 @@ async function createRide(file) {
 }
 function openRide(id) {
   const r = G.rides.find(x => x.id === id); if (!r) return;
-  S = r; G.cur = id; ui = Object.assign(ui, { tab: 'dash', manual: false, msg: '', wxMsg: '', mapMsg: '', mapView: null, mapOff: 0, mapMode: 'pass' });
+  S = r; G.cur = id; ui = Object.assign(ui, { rtab: 'run', tab: 'dash', manual: false, msg: '', wxMsg: '', mapMsg: '', mapView: null, mapOff: 0, mapMode: 'pass' });
   save(); try { history.pushState({ r: 1 }, ''); } catch (e) {}
   render();
   if (S.track) { updateGPS(true); refreshWeather(false); }
@@ -836,6 +953,7 @@ function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render();
 
 document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
+  const rt = e.target.closest('[data-rt]'); if (rt) { ui.rtab = rt.dataset.rt; render(); if (ui.rtab === 'wx') refreshWeather(false); return; }
   const hm = e.target.closest('[data-home]'); if (hm) { ui.home = hm.dataset.home; render(); return; }
   const dy = e.target.closest('[data-day]'); if (dy) { ui.calSel = ui.calSel === dy.dataset.day ? null : dy.dataset.day; render(); return; }
   const dr = e.target.closest('[data-delride]'); if (dr) { const r = G.rides.find(x => x.id === dr.dataset.delride); if (r && confirm('Supprimer « ' + r.name + ' » et toutes ses positions ?')) { G.rides = G.rides.filter(x => x !== r); save(); render(); } return; }
@@ -846,6 +964,16 @@ document.addEventListener('click', e => {
   const act = a.dataset.act;
   if (a.tagName === 'A') e.preventDefault();
   if (act === 'new') { ui.pending = null; $('#gpxfile').click(); }
+  else if (act === 'race-on') raceStart();
+  else if (act === 'race-off') { S.raceMode = false; ui.tab = 'dash'; save(); render(); }
+  else if (act === 'wxrefresh') { ui.wxMsg = 'Chargement…'; render(); refreshWeather(true); }
+  else if (act === 'rpunch') { ui.rsel = raceNextIdx(); ui.rt0 = Date.now(); ui.roff = 0; ui.rtab = 'punch'; render(); }
+  else if (act === 'rback') { ui.rtab = 'run'; render(); }
+  else if (act === 'rminus') { ui.roff -= 5; render(); }
+  else if (act === 'rplus') { ui.roff += 5; render(); }
+  else if (act === 'rsel-prev') { ui.rsel = Math.max(0, ui.rsel - 1); render(); }
+  else if (act === 'rsel-next') { ui.rsel = Math.min(S.controls.length - 1, ui.rsel + 1); render(); }
+  else if (act === 'rok') { addLog(S.controls[ui.rsel].km, ui.rt0 + ui.roff * 60000, 'manuel'); ui.rtab = 'run'; S.weather = null; render(); refreshWeather(true); }
   else if (act === 'calprev' || act === 'calnext') { const c = ui.cal, d = new Date(c.y, c.m + (act === 'calnext' ? 1 : -1), 1); ui.cal = { y: d.getFullYear(), m: d.getMonth() }; render(); }
   else if (act === 'calclear') { ui.calSel = null; render(); }
   else if (act === 'plan-go') {
@@ -924,7 +1052,7 @@ window.addEventListener('popstate', () => { if (S) goHome(); });
   await load(); render();
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor) navigator.serviceWorker.register('sw.js'); } catch (e) {}
   if (S) { try { history.pushState({ r: 1 }, ''); } catch (e) {} if (S.track) { updateGPS(true); refreshWeather(false); } }
-  setInterval(() => { if (!document.hidden && !ui.manual && (!S || ui.tab === 'dash' || ui.tab === 'route')) render(); }, 60000);
+  setInterval(() => { if (!document.hidden && !ui.manual && (!S || ui.tab === 'dash' || ui.tab === 'route' || (S.raceMode && ui.rtab !== 'punch'))) render(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && S && S.track) { updateGPS(true); refreshWeather(false); } });
 })();
 </script>
