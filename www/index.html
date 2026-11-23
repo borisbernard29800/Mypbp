@@ -63,7 +63,8 @@ header .lg{display:flex}header h1{flex:1;margin:0 0 0 8px}
 header{gap:6px}
 .hn{flex:1;font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .back{padding:7px 10px!important;font-size:14px}
-.ride{cursor:pointer}.ride:active{background:var(--card2)}
+.ride{cursor:pointer;position:relative}.rdel{position:absolute;top:8px;right:6px;font-size:18px!important;padding:6px 10px!important}.rn{padding-right:34px}
+.ctl-t{background:#0b1220e6;color:#fff;border:1px solid #e8edf7;border-radius:6px;font:600 11px system-ui;padding:1px 5px;box-shadow:none}.ctl-t:before{display:none}.ride:active{background:var(--card2)}
 .rn{font-size:18px;font-weight:700;margin-bottom:2px}
 #map{height:58vh;min-height:360px;border-radius:12px;overflow:hidden}
 .leaflet-container{background:#0f1a30;font:inherit}
@@ -380,7 +381,7 @@ function rideCard(r) {
   else if (rd) { const d = st.delta, w = Math.abs(d) < 15 * 60e3; label = 'En course · km ' + rd.km.toFixed(0) + ' · ' + (w ? 'dans le plan' : (d > 0 ? '+' : '−') + fmtDur(d)); cls = w ? 'warn' : d > 0 ? 'ok' : 'bad'; }
   else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
   else label = 'Départ passé · aucune position';
-  return '<div class="card ride" data-open="' + r.id + '"><div class="rn">' + esc(r.name) + '</div>' +
+  return '<div class="card ride" data-open="' + r.id + '"><button class="x rdel" data-delride="' + r.id + '" aria-label="Supprimer">🗑</button><div class="rn">' + esc(r.name) + '</div>' +
     '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m · limite ' + limLabel(r.limitH) + '</div>' +
     '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
 }
@@ -565,13 +566,17 @@ function initMap() {
   for (const [n, z] of [['rainPane', 410], ['routePane', 420], ['ctlPane', 430]]) mapObj.createPane(n).style.zIndex = z;
   if (ui.tiles) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '© OpenStreetMap' }).addTo(mapObj);
   routeLayer = L.layerGroup().addTo(mapObj);
-  const rd = lastReading(), stp = Math.max(1, Math.floor(T.n / 2500)), all = [];
+  const rd = lastReading(), stp = Math.max(1, Math.floor(T.n / 2500)), all = [], ctlMarks = [];
   for (let i = 0; i < T.n; i += stp) all.push([T.lat[i], T.lon[i]]);
   mapAll = L.latLngBounds(all).pad(0.05);
   for (const c of S.controls) {
     const p = posAtKm(T, c.km);
-    L.circleMarker([p.lat, p.lon], { pane: 'ctlPane', radius: 5, color: '#0b1220', weight: 2, fillColor: '#e8edf7', fillOpacity: 1 }).bindTooltip(c.name + ' · km ' + c.km.toFixed(0)).addTo(mapObj);
+    const m = L.circleMarker([p.lat, p.lon], { pane: 'ctlPane', radius: 8, color: '#fff', weight: 3, fillColor: '#7c3aed', fillOpacity: 1 }).addTo(mapObj);
+    m.bindTooltip(c.name + ' · km ' + c.km.toFixed(0) + ' · ' + fmtT(timeAtKm(curPlan(), c.km)), { permanent: true, direction: 'top', offset: [0, -8], className: 'ctl-t' });
+    ctlMarks.push(m);
   }
+  const zc = () => { const show = mapObj.getZoom() >= 8; ctlMarks.forEach(m => { const t = m.getTooltip(); if (t) { t.getElement() && (t.getElement().style.display = show ? '' : 'none'); } }); };
+  mapObj.on('zoomend', zc); setTimeout(zc, 0);
   if (rd) { const p = posAtKm(T, rd.km); L.circleMarker([p.lat, p.lon], { pane: 'ctlPane', radius: 9, color: '#fff', weight: 3, fillColor: '#f97316', fillOpacity: 1 }).bindTooltip('Moi · km ' + rd.km.toFixed(0)).addTo(mapObj); }
   if (ui.mapView) mapObj.setView(ui.mapView.c, ui.mapView.z); else if (rd) fitAhead(); else mapObj.fitBounds(mapAll);
   arrowLayer = L.layerGroup().addTo(mapObj);
@@ -833,6 +838,7 @@ document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
   const hm = e.target.closest('[data-home]'); if (hm) { ui.home = hm.dataset.home; render(); return; }
   const dy = e.target.closest('[data-day]'); if (dy) { ui.calSel = ui.calSel === dy.dataset.day ? null : dy.dataset.day; render(); return; }
+  const dr = e.target.closest('[data-delride]'); if (dr) { const r = G.rides.find(x => x.id === dr.dataset.delride); if (r && confirm('Supprimer « ' + r.name + ' » et toutes ses positions ?')) { G.rides = G.rides.filter(x => x !== r); save(); render(); } return; }
   const op = e.target.closest('[data-open]'); if (op) { openRide(op.dataset.open); return; }
   const del = e.target.closest('[data-del]'); if (del) { S.log = S.log.filter(r => r.t !== +del.dataset.del); save(); render(); return; }
   const rm = e.target.closest('[data-rm]'); if (rm) { S.controls.splice(+rm.dataset.rm, 1); S.weather = null; save(); render(); return; }
@@ -900,7 +906,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'kind') { S.kind = t.value; if (S.kind === 'BRM') S.limitH = brmLimitH(S.track.total); else if (S.kind === 'PBP') { S.limitH = 90; if (S.controls.length <= 1 && isPBP(S.track)) resetControls(); } S.weather = null; save(); render(); }
   else if (t.id === 'tol') { S.tol = Math.max(0.5, +t.value || 3); save(); }
   else if (t.id === 'rname') { S.name = t.value.trim() || S.name; save(); renderHeader(); }
-  else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; S.mapWx = null; save(); render(); } }
+  else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; S.mapWx = null; S.weather = null; save(); render(); refreshWeather(true); } }
   else if (t.id === 'lim') { S.limitH = Math.max(1, +t.value || 90); save(); render(); }
   else if (t.id === 'mode') { S.mode = t.value; save(); render(); }
   else if (t.id === 'tiles') { ui.tiles = t.checked; render(); }
