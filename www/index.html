@@ -103,6 +103,7 @@ body.race{background:var(--rbg);padding-bottom:calc(100px + env(safe-area-inset-
 .hbtn{padding:4px 11px!important;border-radius:99px!important;font-weight:700}
 .hl{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 14px}.hl summary{padding:14px 0;font-weight:700;cursor:pointer}.hl div{padding-bottom:12px;font-size:15px;color:#cbd5e6}.hl ul,.hl ol{padding-left:20px;margin:6px 0}.hl li{margin:6px 0}.hl p{margin:8px 0}
 .topts{display:grid;gap:8px}.topt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font:inherit}.topt span{font-size:13px;color:var(--mut)}.topt.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.sw{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:15px;color:var(--tx)}.sw input{width:22px;height:22px}
 .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font:inherit;font-size:14px}.seg button.on{background:var(--card2);color:var(--tx);border-color:var(--acc);font-weight:600}
 .calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;text-transform:capitalize}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cw{font-size:11px;color:var(--mut)}
@@ -351,7 +352,7 @@ let mapObj = null, wxLayer = null, mapAll = null;
 
 function newRide(name) {
   const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(7, 0, 0, 0);
-  return { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name, kind: 'Sortie', tol: 3, track: null, controls: [], speed: 22, depMs: d.getTime(), limitH: 90, mode: 'plan', log: [], weather: null, mapWx: null };
+  return { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name, kind: 'Sortie', useLimit: false, tol: 3, track: null, controls: [], speed: 22, depMs: d.getTime(), limitH: 90, mode: 'plan', log: [], weather: null, mapWx: null };
 }
 function idb() { return new Promise((res, rej) => { const r = indexedDB.open('mypbp', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 async function kvGet(k) { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
@@ -369,7 +370,7 @@ async function load() {
     }
   } catch (e) { memOnly = true; }
   if (!G.set) G.set = { theme: 'auto' };
-  for (const r of G.rides) { if (r.kind === 'Circuit' || !r.kind) r.kind = 'Sortie'; else if (/^BRM/.test(r.kind)) r.kind = 'BRM'; if (r.tol == null) r.tol = 3; }
+  for (const r of G.rides) { if (r.kind === 'Circuit' || !r.kind) r.kind = 'Sortie'; else if (/^BRM/.test(r.kind)) r.kind = 'BRM'; if (r.tol == null) r.tol = 3; if (r.useLimit == null) r.useLimit = r.kind !== 'Sortie'; }
   S = G.rides.find(r => r.id === G.cur) || null;
 }
 const kindLabel = r => r.kind === 'BRM' ? 'BRM ' + brmNominal(r.track.total) : r.kind === 'PBP' ? 'PBP' : 'Sortie';
@@ -407,7 +408,7 @@ function rideCard(r) {
   else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
   else label = 'Départ passé · aucune position';
   return '<div class="card ride" data-open="' + r.id + '"><button class="x rdel" data-delride="' + r.id + '" aria-label="Supprimer">🗑</button><div class="rn">' + esc(r.name) + '</div>' +
-    '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m' + (r.kind === 'Sortie' ? '' : ' · limite ' + limLabel(r.limitH)) + '</div>' +
+    '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m' + (r.useLimit ? ' · limite ' + limLabel(r.limitH) : '') + '</div>' +
     '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
 }
 const KCOL = { BRM: '#60a5fa', PBP: '#fb923c', Sortie: '#34d399' };
@@ -455,7 +456,7 @@ function renderDash() {
   if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
   const P = curPlan(), now = Date.now(), dep = S.depMs, lim = S.limitH, limMs = lim * 3600e3, limL = limLabel(lim);
   const rd = lastReading(), st = computeStatus(P, rd, lim, S.mode), total = st.total;
-  const elapsed = Math.max(0, now - dep), lm = S.kind !== 'Sortie';
+  const elapsed = Math.max(0, now - dep), lm = !!S.useLimit;
   const pill = now < dep ? 'Départ dans ' + (Math.floor((dep - now) / 86400e3) ? Math.floor((dep - now) / 86400e3) + ' j ' : '') + fmtDur((dep - now) % 86400e3)
     : st.done ? 'Arrivée !' : 'En course';
   let hero = '<button class="b" data-act="race-on" style="width:100%;margin-bottom:12px">🏁 Mode course (affichage épuré)</button><div class="card hero"><span class="pill">' + pill + '</span>';
@@ -738,12 +739,13 @@ function renderPlan() {
   if (!S.track) return h;
   const P = curPlan(), st = computeStatus(P, null, S.limitH, S.mode);
   const nom = brmNominal(S.track.total);
-  h += '<div class="card"><h2>Départ & limite</h2><div class="row2"><div><label>Date et heure de départ</label><input type="datetime-local" id="dep" value="' + toInput(S.depMs) + '"></div>' +
-    '<div><label>Temps max (h)</label><input type="number" id="lim" value="' + S.limitH + '" step="0.5" inputmode="decimal"></div></div>' +
+  h += '<div class="card"><h2>Départ' + (S.useLimit ? ' & limite' : '') + '</h2><label>Date et heure de départ</label><input type="datetime-local" id="dep" value="' + toInput(S.depMs) + '">' +
+    '<label class="sw"><input type="checkbox" id="uselim"' + (S.useLimit ? ' checked' : '') + '><span>Limite horaire</span></label>' +
+    (S.useLimit ? '<label>Temps max (h)</label><input type="number" id="lim" value="' + S.limitH + '" step="0.5" inputmode="decimal">' +
+      '<div class="msg">Délai BRM pour ' + nom + ' km : ' + limLabel(brmLimitH(S.track.total)) + ' · PBP : 90h00. <a href="#" data-act="applybrm" style="color:var(--acc)">Appliquer le délai BRM</a></div>' : '<div class="msg">Sans limite : l’app affiche la durée prévue et ton avance ou retard, sans marge ni vitesse minimale.</div>') +
     '<label>Tolérance GPS (km)</label><input type="number" id="tol" step="0.5" min="0.5" value="' + S.tol + '"><div class="msg">Distance maximale entre ta position et la trace pour l’enregistrer.</div>' +
-    '<div class="msg">Délai BRM pour ' + nom + ' km : ' + limLabel(brmLimitH(S.track.total)) + ' · PBP : 90h00. <a href="#" data-act="applybrm" style="color:var(--acc)">Appliquer le délai BRM</a></div>' +
     '<label>Projection de l’arrivée</label><select id="mode"><option value="plan"' + (S.mode === 'plan' ? ' selected' : '') + '>Plan prévu, décalé de mon écart</option><option value="real"' + (S.mode === 'real' ? ' selected' : '') + '>Au rythme réel constaté</option></select>' +
-    '<div class="grid" style="margin-top:12px"><div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - S.depMs) + '</b></div><div class="k"><span>Marge sur ' + limLabel(S.limitH) + '</span><b class="' + (st.plannedMargin < 0 ? 'bad' : 'ok') + '">' + (st.plannedMargin < 0 ? '−' : '+') + fmtDur(st.plannedMargin) + '</b></div></div>' +
+    '<div class="grid" style="margin-top:12px"><div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - S.depMs) + '</b></div>' + (S.useLimit ? '<div class="k"><span>Marge sur ' + limLabel(S.limitH) + '</span><b class="' + (st.plannedMargin < 0 ? 'bad' : 'ok') + '">' + (st.plannedMargin < 0 ? '−' : '+') + fmtDur(st.plannedMargin) + '</b></div>' : '') + '</div>' +
     '<div class="msg">Arrivée prévue : ' + fmtDT(st.plannedFinish) + '</div></div>';
   const last = S.controls.length - 1;
   h += '<div class="card"><h2>Étapes</h2><table><tr><th>Contrôle</th><th>Km</th><th>km/h</th><th>Arrêt</th><th></th></tr>' +
@@ -815,7 +817,7 @@ function raceRun(c) {
     nx = '<div class="rcard"><span class="rl">' + (last ? 'Arrivée' : 'Prochaine étape') + '</span>' + (last ? '' : '<span class="rname">' + esc(nxt.name) + '</span>') +
       '<div class="rrow"><span class="rnum">' + away.toFixed(0) + ' km</span><div class="rcol"><span class="rtime">' + hm(nxt.eta) + '</span><span class="rl">' + (c.planned ? 'prévu ' + hm(c.planned) : '') + '</span></div></div></div>';
   } else nx = '<div class="rcard"><span class="rl">Arrivée</span><div class="rrow"><span class="rnum">' + rem.toFixed(0) + ' km</span><div class="rcol"><span class="rtime">' + hm(finish) + '</span><span class="rl">' + dayS(finish) + ' · prévu ' + hm(st.plannedFinish) + '</span></div></div></div>';
-  const lim = S.kind !== 'Sortie' && rd ? '<div class="rl" style="text-align:center">Marge sur ' + limLabel(S.limitH) + ' : <b style="color:' + (st.margin < 0 ? 'var(--ramb)' : 'var(--rok)') + '">' + (st.margin < 0 ? '−' : '+') + mins(st.margin) + '</b></div>' : '';
+  const lim = S.useLimit && rd ? '<div class="rl" style="text-align:center">Marge sur ' + limLabel(S.limitH) + ' : <b style="color:' + (st.margin < 0 ? 'var(--ramb)' : 'var(--rok)') + '">' + (st.margin < 0 ? '−' : '+') + mins(st.margin) + '</b></div>' : '';
   const bottom = c.stages
     ? '<div class="rrow2"><span>Reste <b>' + rem.toFixed(0) + ' km</b></span><span>Arrivée <b>' + dayS(finish) + ' ' + hm(finish) + '</b></span></div>'
     : '<div class="rrow2"><span>Fait <b>' + kmNow.toFixed(0) + ' km</b></span><span>Durée <b>' + (rd ? mins(rd.t - S.depMs) : '—') + '</b></span></div>';
@@ -892,10 +894,10 @@ function renderSettings() {
 function renderHelp() {
   const sec = (t, b, open) => '<details class="hl"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div>' + b + '</div></details>';
   return '<button class="g" data-act="help-off" style="justify-self:start">‹ Retour</button><div class="card"><h2>Aide · MyBikePlanner</h2><div class="msg" style="margin:0">Suivre une sortie (PBP, BRM…) par rapport au planning prévu. Tout reste sur ce téléphone : aucun compte, aucun serveur. Touche un titre pour déplier.</div></div>' +
-    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). Une <b>sortie libre</b> n’a pas de limite : l’app affiche seulement la durée prévue et la progression (la limite interne, 1,25 × la durée prévue, n’est pas montrée).</p>', true) +
+    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). La limite est <b>facultative</b> : dans Plan, l’interrupteur « Limite horaire » l’active ou non (par défaut : activée pour BRM/PBP, désactivée pour une sortie libre).</p>', true) +
     sec('🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>') +
     sec('📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>') +
-    sec('🗺️ Onglet Plan', '<ul><li><b>Départ & limite</b> : heure de départ et temps maximum.</li><li><b>Étapes</b> : pour chaque contrôle, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>') +
+    sec('🗺️ Onglet Plan', '<ul><li><b>Départ</b> : heure de départ. L’interrupteur <b>Limite horaire</b> active ou non un temps maximum (activé par défaut pour un BRM ou un PBP, désactivé pour une sortie libre) ; activé, il affiche marge et vitesse minimale.</li><li><b>Étapes</b> : pour chaque contrôle, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>') +
     sec('📍 Suivre en course', '<p><b>Position GPS</b> : l’app lit ta position à l’ouverture ou quand tu touches le bouton, la projette sur la trace et enregistre un point. Il n’y a <b>aucun suivi en arrière-plan</b> : la batterie est préservée.</p><p><b>Saisir un passage</b> : pour noter à la main l’heure à laquelle tu es passé à un contrôle (heure exacte). Utile sans réseau GPS ou pour corriger.</p><p>L’écran d’accueil du circuit indique l’<b>avance / le retard</b> sur le prévu, la marge sur la limite, la vitesse minimale pour tenir le délai et les prochains passages recalculés.</p>') +
     sec('🏁 Mode course (affichage épuré)', '<p>Bouton « 🏁 Mode course » en haut de l’Accueil du circuit. Pensé pour la fatigue : gros chiffres, un seul bouton.</p><ul><li><b>Course</b> : avance/retard, prochaine étape (km, heure estimée, heure prévue), reste et arrivée. Le bouton <b>« Je suis à l’étape »</b> ouvre le pointage ; l’icône cible (en haut à droite) met à jour le GPS.</li><li><b>Étapes</b> : feuille de route, la prochaine est encadrée.</li><li><b>Météo</b> : température, pluie et vent aux prochaines étapes.</li><li><b>Pointage</b> : l’heure est proposée, ajuste avec −5 / +5 min, puis <b>Valider</b>.</li><li><b>Détails</b> : retour à l’app complète.</li></ul><p>Sans étapes intermédiaires, l’écran se simplifie et le gros bouton devient « Ma position ».</p>') +
     sec('📋 Onglet Route (feuille de route)', '<p>Tableau <b>prévu / réel / écart ±</b>. Les passages déjà effectués utilisent l’heure réelle (exacte si saisie à la main, « ≈ » si interpolée). Les suivants affichent une estimation en italique.</p>') +
@@ -998,6 +1000,7 @@ async function createRide(file) {
     r.controls = C.filter((c, i) => !i || c.km - C[i - 1].km > 0.5);
     r.controls.push({ name: 'Arrivée', km: Math.round(T.total * 10) / 10, speed: r.speed, stop: 0, off: 0 });
   }
+  r.useLimit = r.kind !== 'Sortie';
   if (r.kind === 'BRM') r.limitH = brmLimitH(T.total);
   else if (r.kind === 'PBP') r.limitH = 90;
   else { const P = buildPlan(r.controls, r.depMs); r.limitH = Math.ceil((P[P.length - 1].arr - r.depMs) / 3600e3 * 1.25 * 2) / 2; }
@@ -1048,7 +1051,7 @@ document.addEventListener('click', e => {
     if (!src) { ui.pending = { depMs, kind }; $('#gpxfile').click(); return; }
     const o = G.rides.find(x => x.id === src); if (!o) return;
     const c = structuredClone(o); c.id = 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-    c.kind = kind; c.depMs = depMs; c.log = []; c.weather = null; c.mapWx = null;
+    c.kind = kind; c.useLimit = kind !== 'Sortie'; c.depMs = depMs; c.log = []; c.weather = null; c.mapWx = null;
     if (kind === 'BRM') c.limitH = brmLimitH(c.track.total); else if (kind === 'PBP') c.limitH = 90;
     G.rides.push(c); save(); ui.calSel = null; render();
   }
@@ -1094,7 +1097,8 @@ document.addEventListener('change', e => {
       if (j.v === 2 && Array.isArray(j.rides)) { let n = 0; if (j.set && j.set.theme) G.set = j.set; for (const r of j.rides) { unpackRide(r); const i = G.rides.findIndex(x => x.id === r.id); if (i >= 0) G.rides[i] = r; else G.rides.push(r); n++; } S = null; G.cur = null; save(); render(); alert(n + ' circuit(s) importé(s).'); } else alert('Fichier de sauvegarde non reconnu.');
     } catch (er) { alert('Fichier invalide.'); }
   });
-  else if (t.id === 'kind') { S.kind = t.value; if (S.kind === 'BRM') S.limitH = brmLimitH(S.track.total); else if (S.kind === 'PBP') { S.limitH = 90; if (S.controls.length <= 1 && isPBP(S.track)) resetControls(); } S.weather = null; save(); render(); }
+  else if (t.id === 'uselim') { S.useLimit = t.checked; save(); render(); }
+  else if (t.id === 'kind') { S.kind = t.value; S.useLimit = S.kind !== 'Sortie'; if (S.kind === 'BRM') S.limitH = brmLimitH(S.track.total); else if (S.kind === 'PBP') { S.limitH = 90; if (S.controls.length <= 1 && isPBP(S.track)) resetControls(); } S.weather = null; save(); render(); }
   else if (t.id === 'tol') { S.tol = Math.max(0.5, +t.value || 3); save(); }
   else if (t.id === 'rname') { S.name = t.value.trim() || S.name; save(); renderHeader(); }
   else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; S.mapWx = null; S.weather = null; save(); render(); refreshWeather(true); } }

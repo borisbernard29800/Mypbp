@@ -7,7 +7,7 @@ APK le plus récent : https://github.com/borisbernard29800/Mypbp/releases/downlo
 Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mise à jour s'installe **par-dessus** l'ancienne version et conserve les données (même signature).
 
 ## Fonctions
-- **Circuits multiples** : import de GPX, type choisi par l'utilisateur (Sortie libre, BRM, PBP) ; le délai max dépend du type (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h ; sortie libre = pas de limite affichée : durée prévue et progression seulement).
+- **Circuits multiples** : import de GPX, type choisi par l'utilisateur (Sortie libre, BRM, PBP) ; le délai max dépend du type (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h ; la limite horaire est facultative : interrupteur dans Plan, activé par défaut pour BRM et PBP, désactivé pour une sortie libre).
 - **Agenda** : calendrier des sorties, planification par date avec nouveau GPX ou copie d'un circuit existant.
 - **Plan** : date/heure de départ, étapes (km, vitesse moyenne, arrêt/sommeil), limite, tolérance GPS, projection « plan décalé » ou « rythme réel ».
 - **Suivi** : position GPS à l'ouverture (pas d'arrière-plan, batterie préservée) ou saisie manuelle des passages ; avance/retard, marge, vitesse mini, prochains passages.
