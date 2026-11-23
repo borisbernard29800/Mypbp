@@ -9,7 +9,7 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 ## Fonctions
 - **Circuits multiples** : import de GPX, type choisi par l'utilisateur (Sortie libre, BRM, PBP) ; le délai max dépend du type (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h ; la limite horaire est facultative : interrupteur dans Plan, activé par défaut pour BRM et PBP, désactivé pour une sortie libre).
 - **Agenda** : calendrier des sorties, planification par date avec nouveau GPX ou copie d'un circuit existant.
-- **Plan** : date/heure de départ, étapes (noms modifiables) (km, vitesse moyenne, arrêt/sommeil), limite, tolérance GPS, projection « plan décalé » ou « rythme réel ».
+- **Plan** : date/heure de départ, étapes (noms modifiables, effaçables d'un geste) (km, vitesse moyenne, arrêt/sommeil), limite, tolérance GPS, projection « plan décalé » ou « rythme réel ».
 - **Suivi** : position GPS à l'ouverture (pas d'arrière-plan, batterie préservée) ou saisie manuelle des passages ; avance/retard, marge, vitesse mini, prochains passages.
 - **Route** : feuille de route prévu / réel / écart.
 - **Noter un passage depuis la carte** : toucher le tracé puis « Noter un passage ici » (km prérempli).
