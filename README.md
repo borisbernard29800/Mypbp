@@ -12,6 +12,7 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 - **Plan** : date/heure de départ, étapes (km, vitesse moyenne, arrêt/sommeil), limite, tolérance GPS, projection « plan décalé » ou « rythme réel ».
 - **Suivi** : position GPS à l'ouverture (pas d'arrière-plan, batterie préservée) ou saisie manuelle des passages ; avance/retard, marge, vitesse mini, prochains passages.
 - **Route** : feuille de route prévu / réel / écart.
+- **Noter un passage depuis la carte** : toucher le tracé puis « Noter un passage ici » (km prérempli).
 - **Carte météo** (style Epic Ride Weather) : flèches de vent le long du tracé (face/dos/côté), trajet coloré par température, halo de pluie, courbes (température et ressentie, précipitations et nuages, vent et rafales, altitude), météo à l'heure de passage ou à heure fixe, prévisions sur 7 jours.
 - **Mode course** : affichage épuré (Course / Étapes / Météo / Pointage), gros chiffres, un seul bouton.
 - **Réglages (⚙)** : thème Automatique (soleil) / Téléphone / Jour / Nuit ; **Sauvegarde** : export (partage Android) et import (fusion) de tous les circuits.
