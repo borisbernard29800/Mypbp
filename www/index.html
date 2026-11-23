@@ -98,6 +98,8 @@ body.race{--rok:#5EE08A;--ramb:#FFB224;--rmut:#A9B4C2;--rcard:#151A21;--rline:#2
 .rback{display:flex;align-items:center;gap:8px;min-height:56px;font:700 22px Inter,system-ui,sans-serif;color:var(--rmut);background:none;border:0;padding:0}
 .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.rb2{min-height:88px;border-radius:24px;border:2px solid #3A4553;background:var(--rcard);color:#F5F7FA;font:800 30px Inter,system-ui,sans-serif}
 .rsel{background:var(--rcard);border:1px solid #3A4553;color:#F5F7FA;border-radius:14px;padding:10px 14px;font:600 16px Inter,system-ui,sans-serif}
+.hbtn{padding:4px 11px!important;border-radius:99px!important;font-weight:700}
+.hl{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 14px}.hl summary{padding:14px 0;font-weight:700;cursor:pointer}.hl div{padding-bottom:12px;font-size:15px;color:#cbd5e6}.hl ul,.hl ol{padding-left:20px;margin:6px 0}.hl li{margin:6px 0}.hl p{margin:8px 0}
 .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font:inherit;font-size:14px}.seg button.on{background:var(--card2);color:var(--tx);border-color:var(--acc);font-weight:600}
 .calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;text-transform:capitalize}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cw{font-size:11px;color:var(--mut)}
@@ -341,7 +343,7 @@ const LOGO = '<svg viewBox="0 0 64 64" width="30" height="30" fill="none" stroke
 let G = { v: 2, rides: [], cur: null };
 let S = null; // circuit ouvert (objet de G.rides)
 let memOnly = false;
-let ui = { rtab: 'run', rsel: 0, rt0: 0, roff: 0, home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
+let ui = { help: false, rtab: 'run', rsel: 0, rt0: 0, roff: 0, home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
 let mapObj = null, wxLayer = null, mapAll = null;
 
 function newRide(name) {
@@ -817,7 +819,7 @@ function raceRun(c) {
   const btn = c.stages && !(rd && st.done)
     ? '<button class="rbtn" data-act="rpunch">' + svg('pin', 32, 2.6, '#0B0D10') + '<span>Je suis à l’étape</span></button>'
     : '<button class="rbtn" data-act="gps">' + svg('gps', 32, 2.6, '#0B0D10') + '<span>Ma position</span></button>';
-  return '<div class="rtop"><span>Km ' + kmNow.toFixed(0) + ' / ' + total.toFixed(0) + '</span><span class="rclk">' + hm(now) + ' <button class="rgps" data-act="gps" aria-label="Position GPS">' + svg('gps', 22, 2.4) + '</button></span></div>' + dl + nx +
+  return '<div class="rtop"><span>Km ' + kmNow.toFixed(0) + ' / ' + total.toFixed(0) + '</span><span class="rclk">' + hm(now) + ' <button class="rgps" data-act="help-on" aria-label="Aide">?</button><button class="rgps" data-act="gps" aria-label="Position GPS">' + svg('gps', 22, 2.4) + '</button></span></div>' + dl + nx +
     '<div class="rbarw"><div class="rbar"><div style="width:' + (Math.min(1, kmNow / total) * 100).toFixed(1) + '%"></div></div>' + bottom + '</div>' + lim +
     (ui.msg ? '<div class="rl" style="text-align:center">' + esc(ui.msg) + '</div>' : '') +
     '<div style="flex:1"></div>' + btn;
@@ -857,24 +859,41 @@ function racePunch(c) {
 function raceStart() { S.raceMode = true; ui.rtab = 'run'; ui.msg = ''; save(); render(); updateGPS(true); }
 function raceNextIdx() { const c = raceCtx(); if (c.rd && c.st.done) return S.controls.length - 1; const k = c.nxt ? S.controls.findIndex(x => x.km === c.nxt.km && x.name === c.nxt.name) : -1; return k < 0 ? 0 : k; }
 
+// ===== Aide intégrée =====
+function renderHelp() {
+  const sec = (t, b, open) => '<details class="hl"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div>' + b + '</div></details>';
+  return '<button class="g" data-act="help-off" style="justify-self:start">‹ Retour</button><div class="card"><h2>Aide · MyBikePlanner</h2><div class="msg" style="margin:0">Suivre une sortie (PBP, BRM…) par rapport au planning prévu. Tout reste sur ce téléphone : aucun compte, aucun serveur. Touche un titre pour déplier.</div></div>' +
+    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). Pour une sortie libre, la limite est estimée à 1,25 × la durée prévue et reste modifiable.</p>', true) +
+    sec('🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>') +
+    sec('📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>') +
+    sec('🗺️ Onglet Plan', '<ul><li><b>Départ & limite</b> : heure de départ et temps maximum.</li><li><b>Étapes</b> : pour chaque contrôle, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>') +
+    sec('📍 Suivre en course', '<p><b>Position GPS</b> : l’app lit ta position à l’ouverture ou quand tu touches le bouton, la projette sur la trace et enregistre un point. Il n’y a <b>aucun suivi en arrière-plan</b> : la batterie est préservée.</p><p><b>Saisir un passage</b> : pour noter à la main l’heure à laquelle tu es passé à un contrôle (heure exacte). Utile sans réseau GPS ou pour corriger.</p><p>L’écran d’accueil du circuit indique l’<b>avance / le retard</b> sur le prévu, la marge sur la limite, la vitesse minimale pour tenir le délai et les prochains passages recalculés.</p>') +
+    sec('🏁 Mode course (affichage épuré)', '<p>Bouton « 🏁 Mode course » en haut de l’Accueil du circuit. Pensé pour la fatigue : gros chiffres, un seul bouton.</p><ul><li><b>Course</b> : avance/retard, prochaine étape (km, heure estimée, heure prévue), reste et arrivée. Le bouton <b>« Je suis à l’étape »</b> ouvre le pointage ; l’icône cible (en haut à droite) met à jour le GPS.</li><li><b>Étapes</b> : feuille de route, la prochaine est encadrée.</li><li><b>Météo</b> : température, pluie et vent aux prochaines étapes.</li><li><b>Pointage</b> : l’heure est proposée, ajuste avec −5 / +5 min, puis <b>Valider</b>.</li><li><b>Détails</b> : retour à l’app complète.</li></ul><p>Sans étapes intermédiaires, l’écran se simplifie et le gros bouton devient « Ma position ».</p>') +
+    sec('📋 Onglet Route (feuille de route)', '<p>Tableau <b>prévu / réel / écart ±</b>. Les passages déjà effectués utilisent l’heure réelle (exacte si saisie à la main, « ≈ » si interpolée). Les suivants affichent une estimation en italique.</p>') +
+    sec('🌦️ Carte et météo', '<ul><li><b>Flèches</b> le long du tracé : sens du vent (vers où il souffle). <span style="color:#ef4444">Rouge</span> = de face, <span style="color:#22c55e">vert</span> = dans le dos, gris = de côté. Touche une flèche pour le détail.</li><li><b>Couleur du trajet</b> = température (bleu froid → rouge chaud). <b>Halo bleu</b> = pluie, plus épais si plus fort.</li><li><b>Calques</b> : Vent, Température, Pluie activables séparément.</li><li><b>Moment affiché</b> : « À mon passage » (météo à l’heure prévue de passage en chaque point) ou « Heure fixe » avec curseur.</li><li><b>Devant moi / Tout le parcours</b> : cadrage. Les étapes sont les points violets étiquetés.</li><li><b>Courbes</b> sous la carte : température et ressentie, précipitations (probabilité, intensité) et nuages, vent et rafales, altitude, en fonction de l’heure de passage.</li></ul><p>Les prévisions viennent d’Open-Meteo et ne portent que sur <b>7 jours</b> : pour un départ plus lointain, elles apparaissent à l’approche. Hors ligne, les dernières données reçues restent affichées.</p><p>Le fond de carte (OpenStreetMap) est facultatif : décoche-le pour économiser les données ; le tracé reste visible.</p>') +
+    sec('💾 Sauvegarde et données', '<p>Journal → <b>Exporter</b> crée un fichier de sauvegarde de tous les circuits (traces comprises). <b>Importer</b> fusionne le fichier avec tes circuits actuels (un circuit de même identifiant est remplacé).</p><p>Les données sont stockées dans l’app. Désinstaller l’app les efface : fais un export avant. Mettre à jour l’APK par-dessus l’ancien les conserve.</p>') +
+    sec('🛟 Dépannage', '<ul><li><b>« Autorisation refusée »</b> : active la localisation pour l’app dans les réglages Android.</li><li><b>« Position à X km du parcours : non enregistrée »</b> : tu es hors tolérance. Augmente la tolérance dans Plan, ou saisis le passage à la main.</li><li><b>« Avant le départ »</b> : la position n’est enregistrée qu’à partir de 30 min avant l’heure de départ.</li><li><b>Météo indisponible</b> : pas de réseau ; réessaie avec « ↻ Actualiser ».</li><li><b>Départ modifié mais heures inchangées</b> : touche « ↻ Actualiser » dans Météo.</li><li><b>Bouton retour Android</b> : revient à la liste des circuits.</li></ul>') +
+    '<div class="msg" style="text-align:center">MyBikePlanner · usage personnel · estimations indicatives, pas un chronométrage officiel.</div>';
+}
+
 // ===== Rendu général =====
 function renderHeader() {
-  if (S && S.raceMode && S.track) return;
+  if (S && S.raceMode && S.track && !ui.help) return;
   $('#hdr').innerHTML = S
-    ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small>'
-    : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small>';
+    ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>'
+    : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>';
 }
 function render() {
   if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; routeLayer = null; arrowLayer = null; }
   renderHeader();
-  const race = !!(S && S.raceMode && S.track); document.body.classList.toggle('race', race);
-  $('#hdr').style.display = race ? 'none' : ''; $('#nav').style.display = S && !race ? 'flex' : 'none';
+  const race = !!(S && S.raceMode && S.track && !ui.help); document.body.classList.toggle('race', race);
+  $('#hdr').style.display = race ? 'none' : ''; $('#nav').style.display = S && !race && !ui.help ? 'flex' : 'none';
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
-  $('#dock').style.display = !race && S && S.track && (ui.tab === 'dash' || ui.tab === 'route') ? 'flex' : 'none';
+  $('#dock').style.display = !race && !ui.help && S && S.track && (ui.tab === 'dash' || ui.tab === 'route') ? 'flex' : 'none';
   const y = window.scrollY;
-  $('#app').innerHTML = !S ? renderHome() : race ? renderRace() : ui.tab === 'dash' ? renderDash() : ui.tab === 'route' ? renderRoute() : ui.tab === 'map' ? renderMap() : ui.tab === 'plan' ? renderPlan() : renderLog();
+  $('#app').innerHTML = ui.help ? renderHelp() : !S ? renderHome() : race ? renderRace() : ui.tab === 'dash' ? renderDash() : ui.tab === 'route' ? renderRoute() : ui.tab === 'map' ? renderMap() : ui.tab === 'plan' ? renderPlan() : renderLog();
   window.scrollTo(0, y);
-  if (S && !race && ui.tab === 'map') initMap();
+  if (S && !race && !ui.help && ui.tab === 'map') initMap();
 }
 
 // ===== Actions =====
@@ -964,6 +983,8 @@ document.addEventListener('click', e => {
   const act = a.dataset.act;
   if (a.tagName === 'A') e.preventDefault();
   if (act === 'new') { ui.pending = null; $('#gpxfile').click(); }
+  else if (act === 'help-on') { ui.help = true; try { history.pushState({ h: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
+  else if (act === 'help-off') { if (history.state && history.state.h) history.back(); else { ui.help = false; render(); } }
   else if (act === 'race-on') raceStart();
   else if (act === 'race-off') { S.raceMode = false; ui.tab = 'dash'; save(); render(); }
   else if (act === 'wxrefresh') { ui.wxMsg = 'Chargement…'; render(); refreshWeather(true); }
@@ -1046,7 +1067,7 @@ document.addEventListener('change', e => {
     S.weather = null; save(); render();
   }
 });
-window.addEventListener('popstate', () => { if (S) goHome(); });
+window.addEventListener('popstate', () => { if (ui.help) { ui.help = false; render(); return; } if (S) goHome(); });
 
 (async function init() {
   await load(); render();
