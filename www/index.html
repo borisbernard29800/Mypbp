@@ -78,6 +78,14 @@ header{gap:6px}
 .tbar{display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#34d399,#fbbf24,#ef4444)}
 input[type=range]{padding:0;height:34px}
 .leaflet-popup-content{font:13px/1.4 system-ui;color:#0b1220}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font:inherit;font-size:14px}.seg button.on{background:var(--card2);color:var(--tx);border-color:var(--acc);font-weight:600}
+.calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;text-transform:capitalize}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cw{font-size:11px;color:var(--mut)}
+.cd{padding:6px 0 4px;border-radius:10px;background:var(--card2);min-height:42px;font-size:14px;cursor:pointer}.cd.today{border:1px solid var(--acc)}.cd.sel{background:var(--acc);color:#07111f}.cd .dts{display:flex;gap:3px;justify-content:center;height:8px;margin-top:3px}.cd .dts i{width:6px;height:6px;border-radius:50%}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{display:flex;align-items:center;gap:6px;margin:0;background:var(--card2);border:1px solid var(--line);border-radius:99px;padding:7px 12px;font-size:14px;color:var(--tx)}.chip input{width:auto}
+.ch{width:100%;height:auto;display:block}.ch text{fill:#8b9ab8;font:10px system-ui}
+.wa{background:none;border:none}
+.leaflet-rainPane-pane{pointer-events:none}
 </style>
 </head>
 <body>
@@ -275,6 +283,31 @@ function tempColor(t) {
   }
   return 'rgb(' + st[4][1] + ')';
 }
+function wxSample(pt, ts) {
+  const n = pt.temp ? pt.temp.length : 0, x = (ts / 1000 - pt.t0) / 3600;
+  if (!n || x < 0 || x > n - 1) return null;
+  const i = Math.floor(x), f = x - i, j = Math.min(i + 1, n - 1), L = a => a[i] + (a[j] - a[i]) * f;
+  const r1 = pt.wd[i] * RAD, r2 = pt.wd[j] * RAD;
+  const ux = pt.ws[i] * Math.sin(r1) * (1 - f) + pt.ws[j] * Math.sin(r2) * f, uy = pt.ws[i] * Math.cos(r1) * (1 - f) + pt.ws[j] * Math.cos(r2) * f;
+  return { temp: L(pt.temp), feels: L(pt.feels), rain: L(pt.rain), prob: L(pt.prob), cloud: L(pt.cloud), ws: L(pt.ws), gust: L(pt.gust), wd: (Math.atan2(ux, uy) / RAD + 360) % 360, code: pt.code[Math.round(x)] };
+}
+function wxBlend(a, b, f) {
+  if (!a) return b; if (!b) return a;
+  const o = {}; for (const k of ['temp', 'feels', 'rain', 'prob', 'cloud', 'ws', 'gust']) o[k] = a[k] + (b[k] - a[k]) * f;
+  const ux = a.ws * Math.sin(a.wd * RAD) * (1 - f) + b.ws * Math.sin(b.wd * RAD) * f, uy = a.ws * Math.cos(a.wd * RAD) * (1 - f) + b.ws * Math.cos(b.wd * RAD) * f;
+  o.wd = (Math.atan2(ux, uy) / RAD + 360) % 360; o.code = f < .5 ? a.code : b.code; return o;
+}
+function wxAtKm(pts, km, ts) {
+  let i = 0; while (i < pts.length - 2 && pts[i + 1].km < km) i++;
+  const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)], f = b.km > a.km ? Math.max(0, Math.min(1, (km - a.km) / (b.km - a.km))) : 0;
+  return wxBlend(wxSample(a, ts), wxSample(b, ts), f);
+}
+function niceRange(lo, hi, n = 4) {
+  if (hi - lo < 1e-6) hi = lo + 1;
+  const raw = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p, st = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  return { lo: Math.floor(lo / st + 1e-9) * st, hi: Math.ceil(hi / st - 1e-9) * st, st };
+}
+function eleAtKm(T, km) { return T.ele[Math.min(T.n - 1, idxAt(T, km * 1000))]; }
 function windInfo(speed, from, bearing) {
   const c = speed * Math.cos((from - bearing) * RAD);
   return c >= 5 ? { t: 'face', v: Math.round(c) } : c <= -5 ? { t: 'dos', v: Math.round(-c) } : { t: 'côté', v: Math.round(speed) };
@@ -288,12 +321,12 @@ const LOGO = '<svg viewBox="0 0 64 64" width="30" height="30" fill="none" stroke
 let G = { v: 2, rides: [], cur: null };
 let S = null; // circuit ouvert (objet de G.rides)
 let memOnly = false;
-let ui = { tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
+let ui = { home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
 let mapObj = null, wxLayer = null, mapAll = null;
 
 function newRide(name) {
   const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(7, 0, 0, 0);
-  return { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name, kind: 'Circuit', track: null, controls: [], speed: 22, depMs: d.getTime(), limitH: 90, mode: 'plan', log: [], weather: null, mapWx: null };
+  return { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name, kind: 'Sortie', tol: 3, track: null, controls: [], speed: 22, depMs: d.getTime(), limitH: 90, mode: 'plan', log: [], weather: null, mapWx: null };
 }
 function idb() { return new Promise((res, rej) => { const r = indexedDB.open('mypbp', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 async function kvGet(k) { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
@@ -310,8 +343,12 @@ async function load() {
       G = { v: 2, rides: [r], cur: null };
     }
   } catch (e) { memOnly = true; }
+  for (const r of G.rides) { if (r.kind === 'Circuit' || !r.kind) r.kind = 'Sortie'; else if (/^BRM/.test(r.kind)) r.kind = 'BRM'; if (r.tol == null) r.tol = 3; }
   S = G.rides.find(r => r.id === G.cur) || null;
 }
+const kindLabel = r => r.kind === 'BRM' ? 'BRM ' + brmNominal(r.track.total) : r.kind === 'PBP' ? 'PBP' : 'Sortie';
+const packG = () => ({ v: 2, cur: null, rides: G.rides.map(r => Object.assign({}, r, r.track ? { track: Object.assign({}, r.track, { lat: Array.from(r.track.lat), lon: Array.from(r.track.lon), ele: Array.from(r.track.ele), cum: Array.from(r.track.cum) }) } : {})) });
+const unpackRide = r => { if (r.track && !(r.track.lat instanceof Float64Array)) for (const k of ['lat', 'lon', 'ele', 'cum']) r.track[k] = Float64Array.from(r.track[k]); return r; };
 
 // ===== Format =====
 const pad = n => String(n).padStart(2, '0');
@@ -336,26 +373,55 @@ function bar(frac, tick, dtick) {
     (tick != null ? '<div class="t" style="left:calc(' + c(tick) + '% - 1px)"></div>' : '') +
     (dtick != null ? '<div class="d" style="left:calc(' + c(dtick) + '% - 1px)"></div>' : '') + '</div>';
 }
+function rideCard(r) {
+  const now = Date.now(), rd = lastReading(r), P = curPlan(r), st = computeStatus(P, rd, r.limitH, r.mode);
+  let label, cls = 'mut';
+  if (rd && st.done) { label = 'Terminé · ' + fmtDT(rd.t); cls = 'ok'; }
+  else if (rd) { const d = st.delta, w = Math.abs(d) < 15 * 60e3; label = 'En course · km ' + rd.km.toFixed(0) + ' · ' + (w ? 'dans le plan' : (d > 0 ? '+' : '−') + fmtDur(d)); cls = w ? 'warn' : d > 0 ? 'ok' : 'bad'; }
+  else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
+  else label = 'Départ passé · aucune position';
+  return '<div class="card ride" data-open="' + r.id + '"><div class="rn">' + esc(r.name) + '</div>' +
+    '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m · limite ' + limLabel(r.limitH) + '</div>' +
+    '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
+}
+const KCOL = { BRM: '#60a5fa', PBP: '#fb923c', Sortie: '#34d399' };
 function renderHome() {
   const now = Date.now();
+  let h = '<div class="seg"><button data-home="list" class="' + (ui.home === 'list' ? 'on' : '') + '">Circuits</button><button data-home="agenda" class="' + (ui.home === 'agenda' ? 'on' : '') + '">Agenda</button></div>';
+  if (ui.home === 'agenda') return h + renderAgenda();
   const R = G.rides.slice().sort((a, b) => {
     const ua = a.depMs + a.limitH * 3600e3 >= now, ub = b.depMs + b.limitH * 3600e3 >= now;
     return ua !== ub ? (ua ? -1 : 1) : ua ? a.depMs - b.depMs : b.depMs - a.depMs;
   });
-  let h = '<button class="b" data-act="new" style="width:100%">＋ Nouveau circuit (importer un GPX)</button>';
-  if (!R.length) return h + '<div class="card empty">Aucun circuit pour l’instant.<br>Importe un fichier GPX (PBP, BRM 200, 300…) pour commencer.</div>';
-  for (const r of R) {
-    const rd = lastReading(r), P = curPlan(r), st = computeStatus(P, rd, r.limitH, r.mode);
-    let label, cls = 'mut';
-    if (rd && st.done) { label = 'Terminé · ' + fmtDT(rd.t); cls = 'ok'; }
-    else if (rd) { const d = st.delta, w = Math.abs(d) < 15 * 60e3; label = 'En course · km ' + rd.km.toFixed(0) + ' · ' + (w ? 'dans le plan' : (d > 0 ? '+' : '−') + fmtDur(d)); cls = w ? 'warn' : d > 0 ? 'ok' : 'bad'; }
-    else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
-    else label = 'Départ passé · aucune position';
-    h += '<div class="card ride" data-open="' + r.id + '"><div class="rn">' + esc(r.name) + '</div>' +
-      '<div class="sub">' + esc(r.kind) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m · limite ' + limLabel(r.limitH) + '</div>' +
-      '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
+  h += '<button class="b" data-act="new" style="width:100%">＋ Nouveau circuit (importer un GPX)</button>';
+  if (!R.length) return h + '<div class="card empty">Aucun circuit pour l’instant.<br>Importe un fichier GPX (PBP, BRM, sortie…) pour commencer.</div>';
+  return h + R.map(rideCard).join('') + (memOnly ? '<div class="msg">⚠️ Stockage local indisponible : les données seront perdues à la fermeture.</div>' : '');
+}
+function renderAgenda() {
+  const now = new Date(), c = ui.cal || (ui.cal = { y: now.getFullYear(), m: now.getMonth() });
+  const first = new Date(c.y, c.m, 1), lead = (first.getDay() + 6) % 7, dim = new Date(c.y, c.m + 1, 0).getDate();
+  const key = d => d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(), by = {};
+  for (const r of G.rides) (by[key(new Date(r.depMs))] = by[key(new Date(r.depMs))] || []).push(r);
+  const month = first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  let h = '<div class="card"><div class="calh"><button class="g" data-act="calprev">‹</button><b>' + month + '</b><button class="g" data-act="calnext">›</button></div>' +
+    '<div class="cal">' + ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => '<div class="cw">' + x + '</div>').join('') + '<div></div>'.repeat(lead);
+  for (let d = 1; d <= dim; d++) {
+    const k = c.y + '-' + c.m + '-' + d, R = by[k] || [], today = key(now) === k;
+    h += '<div class="cd' + (today ? ' today' : '') + (ui.calSel === k ? ' sel' : '') + (R.length ? ' has' : '') + '" data-day="' + k + '"><span>' + d + '</span><div class="dts">' + R.slice(0, 3).map(r => '<i style="background:' + KCOL[r.kind] + '"></i>').join('') + '</div></div>';
   }
-  return h + (memOnly ? '<div class="msg">⚠️ Stockage local indisponible : les données seront perdues à la fermeture.</div>' : '');
+  h += '</div><div class="leg"><span><i style="background:' + KCOL.BRM + '"></i>BRM</span><span><i style="background:' + KCOL.PBP + '"></i>PBP</span><span><i style="background:' + KCOL.Sortie + '"></i>Sortie</span></div></div>';
+  let list, title;
+  if (ui.calSel) { list = by[ui.calSel] || []; const p = ui.calSel.split('-'); title = 'Le ' + new Date(+p[0], +p[1], +p[2]).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  else { list = G.rides.filter(r => r.depMs + r.limitH * 3600e3 >= now.getTime()).sort((a, b) => a.depMs - b.depMs); title = 'Sorties à venir'; }
+  h += '<div class="card" style="padding-bottom:4px"><h2>' + esc(title) + (ui.calSel ? ' <a href="#" data-act="calclear" style="color:var(--acc);text-transform:none;letter-spacing:0">tout voir</a>' : '') + '</h2></div>';
+  h += list.length ? list.map(rideCard).join('') : '<div class="card empty">Aucune sortie.</div>';
+  const opts = G.rides.map(r => '<option value="' + r.id + '">Copie de « ' + esc(r.name) + ' »</option>').join('');
+  const sel = ui.calSel ? (p => new Date(+p[0], +p[1], +p[2], 7, 0).getTime())(ui.calSel.split('-')) : now.getTime() + 86400e3;
+  h += '<div class="card"><h2>Planifier une sortie</h2><label>Date et heure de départ</label><input type="datetime-local" id="pd" value="' + toInput(sel) + '">' +
+    '<label>Type</label><select id="pk"><option value="BRM">BRM</option><option value="Sortie">Sortie libre</option><option value="PBP">Paris-Brest-Paris</option></select>' +
+    '<label>Circuit</label><select id="pc"><option value="">Nouveau GPX…</option>' + opts + '</select>' +
+    '<div style="margin-top:10px"><button class="b" data-act="plan-go" style="width:100%">Planifier</button></div></div>';
+  return h;
 }
 
 // ===== Accueil d'un circuit =====
@@ -460,18 +526,22 @@ function renderRoute() {
     '<div class="msg">Écart = prévu − réel : + en avance, − en retard.' + (rd ? ' Dernière position ' + ago(rd.t) + ' (km ' + rd.km.toFixed(0) + ').' : ' Aucune position enregistrée : seul le prévu est affiché.') + '</div></div>' + renderManual();
 }
 
-// ===== Carte météo =====
+// ===== Carte météo (façon Epic Ride Weather) =====
+let dense = [], routeLayer = null, arrowLayer = null;
 function renderMap() {
   if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
-  const hourMode = ui.mapMode === 'hour';
+  const hourMode = ui.mapMode === 'hour', Ly = ui.layers;
+  const chip = (k, t) => '<label class="chip"><input type="checkbox" data-layer="' + k + '"' + (Ly[k] ? ' checked' : '') + '> ' + t + '</label>';
   return '<div class="card" style="padding:8px"><div id="map"></div>' +
-    '<div class="legend"><span><b class="ar">➤</b> sens du vent (vers où il souffle)</span><span><i class="dot" style="border-color:#f87171"></i> face</span><span><i class="dot" style="border-color:#34d399"></i> dos</span>' +
-    '<span><i class="dot" style="background:#3b82f680;border:0"></i> pluie (taille = mm/h)</span></div>' +
-    '<div class="legend"><span>Température :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div></div>' +
-    '<div class="card"><h2>Moment affiché</h2><div class="row2"><button class="' + (hourMode ? 'g' : 'b') + '" data-act="mapmode-pass">À mon passage</button><button class="' + (hourMode ? 'b' : 'g') + '" data-act="mapmode-hour">Heure fixe</button></div>' +
+    '<div class="legend"><span><b class="ar">➤</b> flèches = sens du vent</span><span><i class="dot" style="border-color:#ef4444"></i> face</span><span><i class="dot" style="border-color:#22c55e"></i> dos</span></div>' +
+    '<div class="legend"><span>Trajet = température :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div>' +
+    '<div class="legend"><span><i class="dot" style="background:#3b82f680;border:0"></i> halo bleu = pluie (épaisseur = mm/h)</span></div></div>' +
+    '<div class="card"><h2>Calques</h2><div class="chips">' + chip('wind', 'Vent') + chip('temp', 'Température') + chip('rain', 'Pluie') + '</div>' +
+    '<h2 style="margin-top:14px">Moment affiché</h2><div class="row2"><button class="' + (hourMode ? 'g' : 'b') + '" data-act="mapmode-pass">À mon passage</button><button class="' + (hourMode ? 'b' : 'g') + '" data-act="mapmode-hour">Heure fixe</button></div>' +
     (hourMode ? '<label id="wxl">' + wxLabel() + '</label><input type="range" id="wxs" min="0" max="120" step="1" value="' + ui.mapOff + '">' : '<div class="msg">Chaque point montre la météo prévue à l’heure où tu devrais y passer.</div>') +
-    '<div class="row2" style="margin-top:10px"><button class="g" data-act="mapfit-me">🎯 Devant moi</button><button class="g" data-act="mapfit-all">🗺️ Tout le parcours</button></div><div class="row2" style="margin-top:8px"><button class="g" data-act="maprefresh">↻ Actualiser la météo</button><label style="margin:0;display:flex;align-items:center;gap:8px"><input type="checkbox" id="tiles" style="width:auto"' + (ui.tiles ? ' checked' : '') + '> Fond de carte</label></div>' +
-    '<div class="msg" id="mapmsg">' + esc(ui.mapMsg) + '</div></div>';
+    '<div class="row2" style="margin-top:10px"><button class="g" data-act="mapfit-me">🎯 Devant moi</button><button class="g" data-act="mapfit-all">🗺️ Tout le parcours</button></div>' +
+    '<div class="row2" style="margin-top:8px"><button class="g" data-act="maprefresh">↻ Actualiser la météo</button><label style="margin:0;display:flex;align-items:center;gap:8px"><input type="checkbox" id="tiles" style="width:auto"' + (ui.tiles ? ' checked' : '') + '> Fond de carte</label></div>' +
+    '<div class="msg" id="mapmsg">' + esc(ui.mapMsg) + '</div></div><div id="charts"></div>';
 }
 function wxLabel() { return 'Dans ' + ui.mapOff + ' h → ' + fmtDT(Date.now() + ui.mapOff * 3600e3); }
 function etaAt(P, rd, st, km) {
@@ -480,82 +550,167 @@ function etaAt(P, rd, st, km) {
   const a = actualAt(S.log, km, S.depMs);
   return a ? a.t : timeAtKm(P, km) - st.delta;
 }
-function arrowSvg(deg) { return '<svg viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(' + deg + 'deg)"><path d="M12 2L19 21L12 16.5L5 21Z" fill="#fff" stroke="#0b1220" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
+function arrowSvg(deg, fill, size = 26) { return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" style="transform:rotate(' + deg + 'deg);filter:drop-shadow(0 1px 2px #000a)"><path d="M12 1.5L20 22L12 17L4 22Z" fill="' + fill + '" stroke="#0b1220" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
+function segLatLngs(T, k0, k1) {
+  const a = idxAt(T, k0 * 1000), b = Math.max(a + 1, idxAt(T, k1 * 1000)), st = Math.max(1, Math.floor((b - a) / 40)), ll = [];
+  for (let i = a; i <= b && i < T.n; i += st) ll.push([T.lat[i], T.lon[i]]);
+  const e = Math.min(b, T.n - 1); if (ll.length && (ll[ll.length - 1][0] !== T.lat[e])) ll.push([T.lat[e], T.lon[e]]);
+  return ll;
+}
 function initMap() {
   const el = $('#map'); if (!el) return;
   if (!window.L) { el.innerHTML = '<div class="empty">Bibliothèque de carte indisponible.</div>'; return; }
   const T = S.track;
-  mapObj = L.map(el, { preferCanvas: true, zoomSnap: 0.5 });
+  mapObj = L.map(el, { zoomSnap: 0.5 });
+  for (const [n, z] of [['rainPane', 410], ['routePane', 420], ['ctlPane', 430]]) mapObj.createPane(n).style.zIndex = z;
   if (ui.tiles) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '© OpenStreetMap' }).addTo(mapObj);
-  const rd = lastReading(), stp = Math.max(1, Math.floor(T.n / 2500)), all = [], done = [], rest = [];
-  for (let i = 0; i < T.n; i += stp) { const ll = [T.lat[i], T.lon[i]]; all.push(ll); (rd && T.cum[i] / 1000 <= rd.km ? done : rest).push(ll); }
-  if (rd && done.length && rest.length) rest.unshift(done[done.length - 1]);
-  if (rd) { L.polyline(done, { color: '#5b6b8c', weight: 5, opacity: .9 }).addTo(mapObj); L.polyline(rest, { color: '#60a5fa', weight: 5, opacity: .95 }).addTo(mapObj); }
-  else L.polyline(all, { color: '#60a5fa', weight: 5, opacity: .95 }).addTo(mapObj);
+  routeLayer = L.layerGroup().addTo(mapObj);
+  const rd = lastReading(), stp = Math.max(1, Math.floor(T.n / 2500)), all = [];
+  for (let i = 0; i < T.n; i += stp) all.push([T.lat[i], T.lon[i]]);
+  mapAll = L.latLngBounds(all).pad(0.05);
   for (const c of S.controls) {
     const p = posAtKm(T, c.km);
-    L.circleMarker([p.lat, p.lon], { radius: 5, color: '#0b1220', weight: 2, fillColor: '#e8edf7', fillOpacity: 1 }).bindTooltip(c.name + ' · km ' + c.km.toFixed(0)).addTo(mapObj);
+    L.circleMarker([p.lat, p.lon], { pane: 'ctlPane', radius: 5, color: '#0b1220', weight: 2, fillColor: '#e8edf7', fillOpacity: 1 }).bindTooltip(c.name + ' · km ' + c.km.toFixed(0)).addTo(mapObj);
   }
-  if (rd) { const p = posAtKm(T, rd.km); L.circleMarker([p.lat, p.lon], { radius: 9, color: '#fff', weight: 3, fillColor: '#f97316', fillOpacity: 1 }).bindTooltip('Moi · km ' + rd.km.toFixed(0)).addTo(mapObj); }
-  mapAll = L.latLngBounds(all).pad(0.05);
+  if (rd) { const p = posAtKm(T, rd.km); L.circleMarker([p.lat, p.lon], { pane: 'ctlPane', radius: 9, color: '#fff', weight: 3, fillColor: '#f97316', fillOpacity: 1 }).bindTooltip('Moi · km ' + rd.km.toFixed(0)).addTo(mapObj); }
   if (ui.mapView) mapObj.setView(ui.mapView.c, ui.mapView.z); else if (rd) fitAhead(); else mapObj.fitBounds(mapAll);
-  wxLayer = L.layerGroup().addTo(mapObj);
-  const zc = () => el.classList.toggle('z-lo', mapObj.getZoom() < 8);
-  mapObj.on('zoomend', zc); zc();
-  updateWxLayer();
+  arrowLayer = L.layerGroup().addTo(mapObj);
+  mapObj.on('moveend', drawArrows);
+  refreshWx();
   fetchMapWeather(false);
 }
 function fitAhead() {
   const T = S.track, rd = lastReading(); if (!mapObj || !rd) return;
-  const a = idxAt(T, Math.max(0, rd.km - 15) * 1000), b = idxAt(T, Math.min(T.total, rd.km + 180) * 1000), ll = [], st = Math.max(1, Math.floor((b - a) / 300));
-  for (let i = a; i <= b; i += st) ll.push([T.lat[i], T.lon[i]]);
+  const ll = segLatLngs(T, Math.max(0, rd.km - 15), Math.min(T.total, rd.km + 180));
   mapObj.fitBounds(L.latLngBounds(ll).pad(0.15));
 }
-function updateWxLayer() {
-  if (!mapObj || !wxLayer) return;
-  wxLayer.clearLayers();
-  const w = S.mapWx; if (!w) return;
-  const P = curPlan(), rd = lastReading(), st = computeStatus(P, rd, S.limitH, S.mode);
-  for (const pt of w.pts) {
-    const ts = ui.mapMode === 'hour' ? Date.now() + ui.mapOff * 3600e3 : etaAt(P, rd, st, pt.km);
-    const v = seriesAt(pt, ts);
-    if (!v) { L.circleMarker([pt.lat, pt.lon], { radius: 4, color: '#26334f', weight: 1, fillColor: '#8b9ab8', fillOpacity: .5 }).bindTooltip('km ' + pt.km.toFixed(0) + (ts < Date.now() - 3600e3 ? ' · déjà passé' : ' · hors prévision') + ' (' + fmtDT(ts) + ')').addTo(wxLayer); continue; }
-    const wind = windInfo(v.ws, v.wd, pt.bearing), bc = wind.t === 'face' ? '#f87171' : wind.t === 'dos' ? '#34d399' : '#0b1220';
-    if (v.rain >= 0.1) L.circleMarker([pt.lat, pt.lon], { radius: Math.min(30, 12 + v.rain * 8), weight: 0, fillColor: '#3b82f6', fillOpacity: Math.min(.75, .25 + v.rain * .25), interactive: false }).addTo(wxLayer);
-    const html = '<div class="wc" style="background:' + tempColor(v.temp) + ';border-color:' + bc + '">' + arrowSvg((v.wd + 180) % 360) + '</div><div class="wt">' + Math.round(v.temp) + '° · ' + Math.round(v.ws) + '</div>';
-    L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: 'wmk', html, iconSize: [64, 48], iconAnchor: [32, 16] }) })
-      .bindPopup('<b>km ' + pt.km.toFixed(0) + '</b> · ' + fmtDT(ts) + '<br>' + WX(v.code) + ' ' + Math.round(v.temp) + ' °C<br>Pluie : ' + (v.rain > 0 ? v.rain.toFixed(1) + ' mm/h' : 'aucune') + '<br>Vent : ' + Math.round(v.ws) + ' km/h, ' + (wind.t === 'côté' ? 'de côté' : wind.t === 'face' ? 'de face ' + wind.v : 'dans le dos ' + wind.v)).addTo(wxLayer);
+function wxContext() { const P = curPlan(), rd = lastReading(); return { P, rd, st: computeStatus(P, rd, S.limitH, S.mode) }; }
+function wxTs(ctx, km) { return ui.mapMode === 'hour' ? Date.now() + ui.mapOff * 3600e3 : etaAt(ctx.P, ctx.rd, ctx.st, km); }
+function computeDense() {
+  dense = []; const w = S.mapWx; if (!w || w.v !== 2) return;
+  const T = S.track, ctx = wxContext(), step = Math.max(2, Math.ceil(T.total / 300)), ks = [];
+  for (let km = 0; km < T.total; km += step) ks.push(km); ks.push(T.total);
+  for (const km of ks) { const ts = wxTs(ctx, km), p = posAtKm(T, km); dense.push({ km, lat: p.lat, lon: p.lon, ts, bearing: bearingAt(T, km), v: wxAtKm(w.pts, km, ts) }); }
+}
+function refreshWx() { if (!mapObj) return; computeDense(); drawRoute(); drawArrows(); renderCharts(); }
+function drawRoute() {
+  if (!mapObj || !routeLayer) return;
+  routeLayer.clearLayers();
+  const T = S.track, rd = lastReading(), Ly = ui.layers, haveW = dense.some(d => d.v);
+  if (Ly.rain) for (let i = 0; i < dense.length - 1; i++) {
+    const v = dense[i].v; if (!v || v.rain < 0.1) continue;
+    L.polyline(segLatLngs(T, dense[i].km, dense[i + 1].km), { pane: 'rainPane', color: '#3b82f6', weight: Math.min(30, 12 + v.rain * 6), opacity: Math.min(.8, .3 + v.rain * .25), lineCap: 'round', interactive: false }).addTo(routeLayer);
   }
+  if (Ly.temp && haveW) {
+    for (let i = 0; i < dense.length - 1; i++) {
+      const a = dense[i], v = a.v;
+      L.polyline(segLatLngs(T, a.km, dense[i + 1].km), { pane: 'routePane', color: v ? tempColor(v.temp) : '#5b6b8c', weight: 5, opacity: rd && a.km < rd.km ? .45 : .95, lineCap: 'round', interactive: false }).addTo(routeLayer);
+    }
+  } else {
+    const split = rd ? rd.km : 0;
+    if (rd) L.polyline(segLatLngs(T, 0, split), { pane: 'routePane', color: '#5b6b8c', weight: 5, interactive: false }).addTo(routeLayer);
+    L.polyline(segLatLngs(T, split, T.total), { pane: 'routePane', color: '#60a5fa', weight: 5, interactive: false }).addTo(routeLayer);
+  }
+}
+function drawArrows() {
+  if (!mapObj || !arrowLayer) return;
+  arrowLayer.clearLayers();
+  const w = S.mapWx; if (!ui.layers.wind || !w || w.v !== 2) return;
+  const T = S.track, ctx = wxContext(), z = mapObj.getZoom(), c = mapObj.getCenter();
+  const mpp = 156543.03 * Math.cos(c.lat * RAD) / Math.pow(2, z), bnd = mapObj.getBounds().pad(0.08);
+  let gap = Math.max(1, 62 * mpp / 1000), count = 0;
+  const hits = [];
+  for (let km = gap / 2; km < T.total; km += gap) { const p = posAtKm(T, km); if (bnd.contains([p.lat, p.lon])) hits.push({ km, p }); }
+  const keep = hits.length > 60 ? hits.filter((_, i) => i % Math.ceil(hits.length / 60) === 0) : hits;
+  for (const h of keep) {
+    const ts = wxTs(ctx, h.km), v = wxAtKm(w.pts, h.km, ts); if (!v) continue;
+    const wi = windInfo(v.ws, v.wd, bearingAt(T, h.km)), fill = wi.t === 'face' ? '#ef4444' : wi.t === 'dos' ? '#22c55e' : '#e5e7eb';
+    const icon = L.divIcon({ className: 'wa', html: arrowSvg((v.wd + 180) % 360, fill), iconSize: [26, 26], iconAnchor: [13, 13] });
+    L.marker([h.p.lat, h.p.lon], { icon, keyboard: false }).bindPopup('<b>km ' + h.km.toFixed(0) + '</b> · ' + fmtDT(ts) + '<br>' + WX(v.code) + ' ' + Math.round(v.temp) + ' °C (ressenti ' + Math.round(v.feels) + ')<br>Pluie : ' + (v.rain > 0 ? v.rain.toFixed(1) + ' mm/h' : 'aucune') + ' (' + Math.round(v.prob) + ' %)<br>Vent : ' + Math.round(v.ws) + ' km/h, rafales ' + Math.round(v.gust) + '<br>' + (wi.t === 'côté' ? 'de côté' : wi.t === 'face' ? 'de face (' + wi.v + ' km/h)' : 'dans le dos (' + wi.v + ' km/h)')).addTo(arrowLayer);
+  }
+}
+// ----- courbes -----
+function chartSvg(xs, series, o) {
+  const W = 340, H = 150, ml = 32, mr = o.y2 ? 32 : 8, mt = 8, mb = 20, pw = W - ml - mr, ph = H - mt - mb;
+  const x0 = xs[0], x1 = xs[xs.length - 1], sx = x => ml + (x - x0) / ((x1 - x0) || 1) * pw;
+  const rng = ax => {
+    let lo = Infinity, hi = -Infinity;
+    for (const s of series) if ((s.axis || 1) === ax) for (const v of s.vals) if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    if (lo === Infinity) return null;
+    if (o['min' + ax] != null) lo = o['min' + ax]; if (o['max' + ax] != null) hi = Math.max(hi, o['max' + ax]);
+    return niceRange(lo, hi);
+  };
+  const R = { 1: rng(1), 2: o.y2 ? rng(2) : null };
+  const sy = (ax, v) => mt + ph - (v - R[ax].lo) / ((R[ax].hi - R[ax].lo) || 1) * ph;
+  let g = '';
+  if (R[1]) for (let v = R[1].lo; v <= R[1].hi + 1e-9; v += R[1].st) { const y = sy(1, v); g += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y + '" y2="' + y + '" stroke="#26334f" stroke-width="1"/><text x="' + (ml - 4) + '" y="' + (y + 3) + '" text-anchor="end">' + (Math.round(v * 10) / 10) + '</text>'; }
+  if (R[2]) for (let v = R[2].lo; v <= R[2].hi + 1e-9; v += R[2].st) { const y = sy(2, v); g += '<text x="' + (W - mr + 4) + '" y="' + (y + 3) + '">' + (Math.round(v * 10) / 10) + '</text>'; }
+  for (let i = 0; i < 4; i++) { const x = x0 + i * (x1 - x0) / 3, px = sx(x); g += '<line x1="' + px + '" x2="' + px + '" y1="' + mt + '" y2="' + (mt + ph) + '" stroke="#26334f" stroke-width="1"/><text x="' + Math.min(Math.max(px, ml + 14), W - mr - 14) + '" y="' + (H - 6) + '" text-anchor="middle">' + o.xfmt(x) + '</text>'; }
+  for (const s of series) {
+    const ax = s.axis || 1; if (!R[ax]) continue;
+    let d = '', seg = [];
+    const flush = () => {
+      if (seg.length > 1) {
+        const pts = seg.map(p => sx(p[0]).toFixed(1) + ' ' + sy(ax, p[1]).toFixed(1));
+        if (s.fill) d += '<path d="M' + sx(seg[0][0]).toFixed(1) + ' ' + (mt + ph) + 'L' + pts.join('L') + 'L' + sx(seg[seg.length - 1][0]).toFixed(1) + ' ' + (mt + ph) + 'Z" fill="' + s.color + '" fill-opacity="' + (s.fo || .22) + '"/>';
+        d += '<path d="M' + pts.join('L') + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" stroke-linejoin="round"/>';
+      }
+      seg = [];
+    };
+    xs.forEach((x, i) => { const v = s.vals[i]; if (v == null) flush(); else seg.push([x, v]); }); flush();
+    g += d;
+  }
+  if (o.nowX != null && o.nowX >= x0 && o.nowX <= x1) { const px = sx(o.nowX); g += '<line x1="' + px + '" x2="' + px + '" y1="' + mt + '" y2="' + (mt + ph) + '" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="3 3"/>'; }
+  return '<svg class="ch" viewBox="0 0 ' + W + ' ' + H + '">' + g + '</svg>' +
+    '<div class="leg">' + series.map(s => '<span><i style="background:' + s.color + '"></i>' + s.name + '</span>').join('') + (o.nowX != null && o.nowX >= x0 && o.nowX <= x1 ? '<span><i style="background:#fbbf24"></i>maintenant</span>' : '') + '</div>';
+}
+function renderCharts() {
+  const el = $('#charts'); if (!el) return;
+  const D = dense.filter(d => d.v);
+  if (D.length < 2) { el.innerHTML = '<div class="card empty">Pas de prévision pour ces dates (7 jours maximum).<br>Les courbes apparaîtront à l’approche du départ.</div>'; return; }
+  const T = S.track, pass = ui.mapMode !== 'hour';
+  const xs = D.map(d => pass ? d.ts : d.km), xfmt = pass ? (x => fmtS(x)) : (x => Math.round(x) + ' km'), o = { xfmt, nowX: pass ? Date.now() : null };
+  const col = f => D.map(d => d.v[f]), ele = D.map(d => eleAtKm(T, d.km));
+  const P = curPlan(), dur = (P[P.length - 1].arr - S.depMs) / 3600e3;
+  const card = (t, body, foot) => '<div class="card"><h2>' + t + '</h2>' + body + (foot ? '<div class="msg">' + foot + '</div>' : '') + '</div>';
+  el.innerHTML =
+    card('Température', chartSvg(xs, [{ name: 'Température (°C)', color: '#60a5fa', vals: col('temp'), fill: 1 }, { name: 'Ressentie (°C)', color: '#fb923c', vals: col('feels'), fill: 1 }], o)) +
+    card('Précipitations et nuages', chartSvg(xs, [{ name: 'Nuages (%)', color: '#8b9ab8', vals: col('cloud'), fill: 1, fo: .18 }, { name: 'Probabilité (%)', color: '#60a5fa', vals: col('prob') }, { name: 'Intensité (mm/h)', color: '#fb923c', vals: col('rain'), fill: 1, axis: 2, fo: .3 }], Object.assign({}, o, { y2: true, min1: 0, max1: 100, min2: 0, max2: 2 }))) +
+    card('Vent', chartSvg(xs, [{ name: 'Vent (km/h)', color: '#60a5fa', vals: col('ws'), fill: 1 }, { name: 'Rafales (km/h)', color: '#fb923c', vals: col('gust'), fill: 1 }], Object.assign({}, o, { min1: 0 }))) +
+    card('Altitude', chartSvg(xs, [{ name: 'Altitude (m)', color: '#fb923c', vals: ele, fill: 1, fo: .3 }], o), 'Dénivelé + ' + Math.round(T.ascent) + ' m · distance ' + T.total.toFixed(0) + ' km · vitesse moyenne prévue ' + (T.total / dur).toFixed(1) + ' km/h');
 }
 function setMapMsg(t) { ui.mapMsg = t; const e = $('#mapmsg'); if (e) e.textContent = t; }
 async function fetchMapWeather(force) {
   if (!S || !S.track) return;
-  if (!navigator.onLine) { setMapMsg(S.mapWx ? 'Hors ligne : prévisions du ' + fmtDT(S.mapWx.at) + '.' : 'Hors ligne : pas de météo en cache.'); return; }
-  if (!force && S.mapWx && Date.now() - S.mapWx.at < 30 * 60e3) { setMapMsg('Météo mise à jour ' + ago(S.mapWx.at) + '.'); return; }
+  const fresh = S.mapWx && S.mapWx.v === 2;
+  if (!navigator.onLine) { setMapMsg(fresh ? 'Hors ligne : prévisions du ' + fmtDT(S.mapWx.at) + '.' : 'Hors ligne : pas de météo en cache.'); return; }
+  if (!force && fresh && Date.now() - S.mapWx.at < 30 * 60e3) { setMapMsg('Météo mise à jour ' + ago(S.mapWx.at) + '.'); return; }
   const ride = S, pts = samplePoints(ride.track);
   setMapMsg('Chargement de la météo…');
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(p => p.lat.toFixed(3)).join(',') + '&longitude=' + pts.map(p => p.lon.toFixed(3)).join(',') +
-    '&hourly=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timeformat=unixtime&timezone=GMT&forecast_days=7';
+    '&hourly=temperature_2m,apparent_temperature,precipitation,precipitation_probability,cloud_cover,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=kmh&timeformat=unixtime&timezone=GMT&forecast_days=7';
   try {
     const r = await fetch(url); if (!r.ok) throw new Error(r.status);
     let j = await r.json(); if (!Array.isArray(j)) j = [j];
-    const r1 = a => a.map(x => Math.round(x * 10) / 10);
-    ride.mapWx = { at: Date.now(), pts: pts.map((p, i) => { const H = j[i].hourly; return { km: p.km, lat: p.lat, lon: p.lon, bearing: p.bearing, t0: H.time[0], temp: r1(H.temperature_2m), rain: r1(H.precipitation), code: H.weather_code, ws: r1(H.wind_speed_10m), wd: H.wind_direction_10m.map(Math.round) }; }) };
+    const r1 = a => a.map(x => x == null ? 0 : Math.round(x * 10) / 10), r0 = a => a.map(x => x == null ? 0 : Math.round(x));
+    ride.mapWx = { v: 2, at: Date.now(), pts: pts.map((p, i) => { const H = j[i].hourly; return { km: p.km, lat: p.lat, lon: p.lon, bearing: p.bearing, t0: H.time[0], temp: r1(H.temperature_2m), feels: r1(H.apparent_temperature), rain: r1(H.precipitation), prob: r0(H.precipitation_probability), cloud: r0(H.cloud_cover), code: r0(H.weather_code), ws: r1(H.wind_speed_10m), gust: r1(H.wind_gusts_10m), wd: r0(H.wind_direction_10m) }; }) };
     save();
-    if (S === ride && ui.tab === 'map') { updateWxLayer(); setMapMsg('Météo mise à jour à l’instant.'); }
-  } catch (e) { if (S === ride) setMapMsg('Météo indisponible (réseau). ' + (ride.mapWx ? 'Dernières données conservées.' : '')); }
+    if (S === ride && ui.tab === 'map') { refreshWx(); setMapMsg('Météo mise à jour à l’instant.'); }
+  } catch (e) { if (S === ride) setMapMsg('Météo indisponible (réseau). ' + (fresh ? 'Dernières données conservées.' : '')); }
 }
 
 // ===== Plan =====
 function renderPlan() {
   let h = '<div class="card"><h2>Circuit</h2><label>Nom</label><input id="rname" value="' + esc(S.name) + '">';
-  h += S.track ? '<div class="sub">' + esc(S.kind) + ' · ' + S.track.total.toFixed(0) + ' km · ' + S.track.n + ' points · D+ ≈ ' + Math.round(S.track.ascent) + ' m</div>' : '';
+  h += '<label>Type de sortie</label><select id="kind"><option value="Sortie"' + (S.kind === 'Sortie' ? ' selected' : '') + '>Sortie libre</option><option value="BRM"' + (S.kind === 'BRM' ? ' selected' : '') + '>BRM (délai selon la distance)</option><option value="PBP"' + (S.kind === 'PBP' ? ' selected' : '') + '>Paris-Brest-Paris (90 h)</option></select>';
+  h += S.track ? '<div class="sub">' + esc(kindLabel(S)) + ' · ' + S.track.total.toFixed(0) + ' km · ' + S.track.n + ' points · D+ ≈ ' + Math.round(S.track.ascent) + ' m</div>' : '';
   h += '<div class="row2" style="margin-top:10px"><button class="g" data-act="dup">Dupliquer</button><button class="g" data-act="delride" style="color:var(--bad)">Supprimer</button></div></div>';
   if (!S.track) return h;
   const P = curPlan(), st = computeStatus(P, null, S.limitH, S.mode);
   const nom = brmNominal(S.track.total);
   h += '<div class="card"><h2>Départ & limite</h2><div class="row2"><div><label>Date et heure de départ</label><input type="datetime-local" id="dep" value="' + toInput(S.depMs) + '"></div>' +
     '<div><label>Temps max (h)</label><input type="number" id="lim" value="' + S.limitH + '" step="0.5" inputmode="decimal"></div></div>' +
+    '<label>Tolérance GPS (km)</label><input type="number" id="tol" step="0.5" min="0.5" value="' + S.tol + '"><div class="msg">Distance maximale entre ta position et la trace pour l’enregistrer.</div>' +
     '<div class="msg">Délai BRM pour ' + nom + ' km : ' + limLabel(brmLimitH(S.track.total)) + ' · PBP : 90h00. <a href="#" data-act="applybrm" style="color:var(--acc)">Appliquer le délai BRM</a></div>' +
     '<label>Projection de l’arrivée</label><select id="mode"><option value="plan"' + (S.mode === 'plan' ? ' selected' : '') + '>Plan prévu, décalé de mon écart</option><option value="real"' + (S.mode === 'real' ? ' selected' : '') + '>Au rythme réel constaté</option></select>' +
     '<div class="grid" style="margin-top:12px"><div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - S.depMs) + '</b></div><div class="k"><span>Marge sur ' + limLabel(S.limitH) + '</span><b class="' + (st.plannedMargin < 0 ? 'bad' : 'ok') + '">' + (st.plannedMargin < 0 ? '−' : '+') + fmtDur(st.plannedMargin) + '</b></div></div>' +
@@ -589,7 +744,7 @@ function renderHeader() {
     : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small>';
 }
 function render() {
-  if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; }
+  if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; routeLayer = null; arrowLayer = null; }
   renderHeader();
   $('#nav').style.display = S ? 'flex' : 'none';
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
@@ -612,8 +767,9 @@ function updateGPS(silent) {
     const T = S.track, now = Date.now(), lat = pos.coords.latitude, lon = pos.coords.longitude;
     const rd = lastReading();
     let s = rd ? snap(T, lat, lon, rd.km - 20, rd.km + 250) : snap(T, lat, lon, 0, null);
-    if (s.d > 3000) s = snap(T, lat, lon, 0, null);
-    if (s.d > 3000) { ui.msg = 'Position à ' + (s.d / 1000).toFixed(1) + ' km du parcours : non enregistrée.'; }
+    const tolM = (S.tol || 3) * 1000;
+    if (s.d > tolM) s = snap(T, lat, lon, 0, null);
+    if (s.d > tolM) { ui.msg = 'Position à ' + (s.d / 1000).toFixed(1) + ' km du parcours : non enregistrée (tolérance ' + (S.tol || 3) + ' km, réglable dans Plan).'; }
     else if (now < S.depMs - 30 * 60e3) { ui.msg = 'Avant le départ : position non enregistrée (km ' + s.km.toFixed(1) + ').'; }
     else { addLog(s.km, now, 'GPS'); ui.msg = ''; }
     render(); refreshWeather(false);
@@ -645,22 +801,24 @@ function resetControls() { S.controls = S.kind === 'PBP' ? defaultControls(S.tra
 async function createRide(file) {
   const g = parseGPX(await file.text());
   if (g.pts.length < 2) { alert('GPX illisible : aucune trace trouvée.'); return; }
-  const T = buildTrack(g.pts, g.name);
+  const T = buildTrack(g.pts, g.name), pend = ui.pending; ui.pending = null;
   const r = newRide((file.name || '').replace(/\.gpx$/i, '').replace(/[_]+/g, ' ').trim() || g.name);
   r.track = T; r.speed = T.total <= 400 ? 25 : T.total <= 700 ? 23 : 22;
-  if (isPBP(T)) {
-    r.kind = 'PBP'; r.controls = defaultControls(T, 22, 20); r.limitH = 90; r.depMs = new Date(2027, 7, 15, 17, 0).getTime();
-  } else {
-    r.kind = T.total <= 1300 ? 'BRM ' + brmNominal(T.total) : 'Circuit'; r.limitH = T.total <= 1300 ? brmLimitH(T.total) : Math.ceil(T.total / 15);
+  r.kind = pend ? pend.kind : 'Sortie'; if (pend) r.depMs = pend.depMs;
+  if (r.kind === 'PBP' && isPBP(T)) { r.controls = defaultControls(T, 22, 20); }
+  else {
     const C = [];
     if (g.wpts.length && g.wpts.length <= 15) {
-      for (const w of g.wpts) { const s = snap(T, w.lat, w.lon, null, null); if (s.d <= 1500 && s.km > 1 && s.km < T.total - 1) C.push({ name: w.name, km: Math.round(s.km * 10) / 10, speed: r.speed, stop: 10, off: Math.round(s.d) }); }
+      for (const w of g.wpts) { const q = snap(T, w.lat, w.lon, null, null); if (q.d <= 1500 && q.km > 1 && q.km < T.total - 1) C.push({ name: w.name, km: Math.round(q.km * 10) / 10, speed: r.speed, stop: 10, off: Math.round(q.d) }); }
       C.sort((a, b) => a.km - b.km);
     }
     r.controls = C.filter((c, i) => !i || c.km - C[i - 1].km > 0.5);
     r.controls.push({ name: 'Arrivée', km: Math.round(T.total * 10) / 10, speed: r.speed, stop: 0, off: 0 });
   }
-  G.rides.push(r); save(); openRide(r.id);
+  if (r.kind === 'BRM') r.limitH = brmLimitH(T.total);
+  else if (r.kind === 'PBP') r.limitH = 90;
+  else { const P = buildPlan(r.controls, r.depMs); r.limitH = Math.ceil((P[P.length - 1].arr - r.depMs) / 3600e3 * 1.25 * 2) / 2; }
+  G.rides.push(r); save(); openRide(r.id); if (!pend) { ui.tab = 'plan'; render(); }
 }
 function openRide(id) {
   const r = G.rides.find(x => x.id === id); if (!r) return;
@@ -673,13 +831,27 @@ function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render();
 
 document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
+  const hm = e.target.closest('[data-home]'); if (hm) { ui.home = hm.dataset.home; render(); return; }
+  const dy = e.target.closest('[data-day]'); if (dy) { ui.calSel = ui.calSel === dy.dataset.day ? null : dy.dataset.day; render(); return; }
   const op = e.target.closest('[data-open]'); if (op) { openRide(op.dataset.open); return; }
   const del = e.target.closest('[data-del]'); if (del) { S.log = S.log.filter(r => r.t !== +del.dataset.del); save(); render(); return; }
   const rm = e.target.closest('[data-rm]'); if (rm) { S.controls.splice(+rm.dataset.rm, 1); S.weather = null; save(); render(); return; }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act;
   if (a.tagName === 'A') e.preventDefault();
-  if (act === 'new') $('#gpxfile').click();
+  if (act === 'new') { ui.pending = null; $('#gpxfile').click(); }
+  else if (act === 'calprev' || act === 'calnext') { const c = ui.cal, d = new Date(c.y, c.m + (act === 'calnext' ? 1 : -1), 1); ui.cal = { y: d.getFullYear(), m: d.getMonth() }; render(); }
+  else if (act === 'calclear') { ui.calSel = null; render(); }
+  else if (act === 'plan-go') {
+    const depMs = new Date($('#pd').value).getTime(), kind = $('#pk').value, src = $('#pc').value;
+    if (isNaN(depMs)) { alert('Indique une date de départ.'); return; }
+    if (!src) { ui.pending = { depMs, kind }; $('#gpxfile').click(); return; }
+    const o = G.rides.find(x => x.id === src); if (!o) return;
+    const c = structuredClone(o); c.id = 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+    c.kind = kind; c.depMs = depMs; c.log = []; c.weather = null; c.mapWx = null;
+    if (kind === 'BRM') c.limitH = brmLimitH(c.track.total); else if (kind === 'PBP') c.limitH = 90;
+    G.rides.push(c); save(); ui.calSel = null; render();
+  }
   else if (act === 'home') { if (history.state && history.state.r) history.back(); else goHome(); }
   else if (act === 'gps') updateGPS(false);
   else if (act === 'manual') { ui.manual = true; render(); const m = document.getElementById('mc'); m && m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -708,13 +880,13 @@ document.addEventListener('click', e => {
   else if (act === 'mapfit-all') { if (mapObj && mapAll) mapObj.fitBounds(mapAll); }
   else if (act === 'mapfit-me') { if (lastReading()) fitAhead(); else setMapMsg('Aucune position enregistrée : touche « Position GPS » dans l’onglet Accueil.'); }
   else if (act === 'export') {
-    const blob = new Blob([JSON.stringify(G)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(packG())], { type: 'application/json' });
     const u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = 'mybikeplanner-sauvegarde.json'; l.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
   }
   else if (act === 'import') $('#jsonfile').click();
 });
 document.addEventListener('input', e => {
-  if (e.target.id === 'wxs') { ui.mapOff = +e.target.value; const l = $('#wxl'); if (l) l.textContent = wxLabel(); updateWxLayer(); }
+  if (e.target.id === 'wxs') { ui.mapOff = +e.target.value; const l = $('#wxl'); if (l) l.textContent = wxLabel(); refreshWx(); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
@@ -722,14 +894,17 @@ document.addEventListener('change', e => {
   else if (t.id === 'jsonfile' && t.files[0]) t.files[0].text().then(x => {
     try {
       const j = JSON.parse(x);
-      if (j.v === 2 && Array.isArray(j.rides)) { G = j; S = null; G.cur = null; save(); render(); } else alert('Fichier de sauvegarde non reconnu.');
+      if (j.v === 2 && Array.isArray(j.rides)) { let n = 0; for (const r of j.rides) { unpackRide(r); const i = G.rides.findIndex(x => x.id === r.id); if (i >= 0) G.rides[i] = r; else G.rides.push(r); n++; } S = null; G.cur = null; save(); render(); alert(n + ' circuit(s) importé(s).'); } else alert('Fichier de sauvegarde non reconnu.');
     } catch (er) { alert('Fichier invalide.'); }
   });
+  else if (t.id === 'kind') { S.kind = t.value; if (S.kind === 'BRM') S.limitH = brmLimitH(S.track.total); else if (S.kind === 'PBP') { S.limitH = 90; if (S.controls.length <= 1 && isPBP(S.track)) resetControls(); } S.weather = null; save(); render(); }
+  else if (t.id === 'tol') { S.tol = Math.max(0.5, +t.value || 3); save(); }
   else if (t.id === 'rname') { S.name = t.value.trim() || S.name; save(); renderHeader(); }
   else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; S.mapWx = null; save(); render(); } }
   else if (t.id === 'lim') { S.limitH = Math.max(1, +t.value || 90); save(); render(); }
   else if (t.id === 'mode') { S.mode = t.value; save(); render(); }
   else if (t.id === 'tiles') { ui.tiles = t.checked; render(); }
+  else if (t.dataset && t.dataset.layer) { ui.layers[t.dataset.layer] = t.checked; drawRoute(); drawArrows(); }
   else if (t.dataset && t.dataset.c != null) {
     const c = S.controls[+t.dataset.c], v = parseFloat(t.value); if (isNaN(v)) return;
     c[t.dataset.f] = v; c.off = 0;
