@@ -407,7 +407,7 @@ function rideCard(r) {
   else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
   else label = 'Départ passé · aucune position';
   return '<div class="card ride" data-open="' + r.id + '"><button class="x rdel" data-delride="' + r.id + '" aria-label="Supprimer">🗑</button><div class="rn">' + esc(r.name) + '</div>' +
-    '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m · limite ' + limLabel(r.limitH) + '</div>' +
+    '<div class="sub">' + esc(kindLabel(r)) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m' + (r.kind === 'Sortie' ? '' : ' · limite ' + limLabel(r.limitH)) + '</div>' +
     '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
 }
 const KCOL = { BRM: '#60a5fa', PBP: '#fb923c', Sortie: '#34d399' };
@@ -455,7 +455,7 @@ function renderDash() {
   if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
   const P = curPlan(), now = Date.now(), dep = S.depMs, lim = S.limitH, limMs = lim * 3600e3, limL = limLabel(lim);
   const rd = lastReading(), st = computeStatus(P, rd, lim, S.mode), total = st.total;
-  const elapsed = Math.max(0, now - dep);
+  const elapsed = Math.max(0, now - dep), lm = S.kind !== 'Sortie';
   const pill = now < dep ? 'Départ dans ' + (Math.floor((dep - now) / 86400e3) ? Math.floor((dep - now) / 86400e3) + ' j ' : '') + fmtDur((dep - now) % 86400e3)
     : st.done ? 'Arrivée !' : 'En course';
   let hero = '<button class="b" data-act="race-on" style="width:100%;margin-bottom:12px">🏁 Mode course (affichage épuré)</button><div class="card hero"><span class="pill">' + pill + '</span>';
@@ -464,25 +464,25 @@ function renderDash() {
     hero += '<div class="big ' + (w ? 'warn' : good ? 'ok' : 'bad') + '">' + (w ? 'dans le plan' : (good ? '+' : '−') + fmtDur(d)) + '</div>' +
       '<div class="sub">' + (w ? '' : good ? "d'avance" : 'de retard') + ' · km ' + rd.km.toFixed(0) + ' / ' + total.toFixed(0) + ' · ' + ago(rd.t) + ' (' + rd.src + ')</div>';
   } else {
-    hero += '<div class="big">' + limL + '</div><div class="sub">temps max · aucune position enregistrée</div>';
+    hero += lm ? '<div class="big">' + limL + '</div><div class="sub">temps max · aucune position enregistrée</div>' : '<div class="big">' + fmtDur(st.plannedFinish - dep) + '</div><div class="sub">durée prévue · aucune position enregistrée</div>';
   }
   hero += ui.msg ? '<div class="msg">' + esc(ui.msg) + '</div></div>' : '</div>';
   const kmNow = rd ? rd.km : 0, plKm = now >= dep ? kmAtTime(P, now) : 0;
   const finishShown = rd ? st.finish : st.plannedFinish, marginShown = rd ? st.margin : st.plannedMargin;
   const mcls = marginShown < 0 ? 'bad' : marginShown < 0.1 * limMs ? 'warn' : 'ok';
   const nxt = st.etas && st.etas[0];
-  let h = hero + '<div class="card"><h2>Course vs limite ' + limL + '</h2>' +
+  let h = hero + '<div class="card"><h2>' + (lm ? 'Course vs limite ' + limL : 'Progression') + '</h2>' + (lm ?
     '<div class="lbl"><span>Temps écoulé</span><span class="num">' + fmtDur(elapsed) + ' / ' + limL + '</span></div>' +
     bar(elapsed / limMs, (st.plannedFinish - dep) / limMs, null) +
-    '<div class="lbl"><span>départ</span><span>▮ fin prévue ' + fmtDur(st.plannedFinish - dep) + '</span></div>' +
+    '<div class="lbl"><span>départ</span><span>▮ fin prévue ' + fmtDur(st.plannedFinish - dep) + '</span></div>' : '') +
     '<div class="lbl"><span>Distance réalisée</span><span class="num">' + kmNow.toFixed(0) + ' / ' + total.toFixed(0) + ' km</span></div>' +
     bar(kmNow / total, plKm / total, null) +
     '<div class="leg"><span><i style="background:var(--acc)"></i>réalisé</span><span><i style="background:var(--warn)"></i>où je devrais être</span></div>' +
     '<div class="grid" style="margin-top:12px">' +
     '<div class="k"><span>Arrivée projetée</span><b>' + fmtDT(finishShown) + '</b></div>' +
-    '<div class="k"><span>Marge sur les ' + limL + '</span><b class="' + mcls + '">' + (marginShown < 0 ? '−' : '+') + fmtDur(marginShown) + '</b></div>' +
+    (lm ? '<div class="k"><span>Marge sur les ' + limL + '</span><b class="' + mcls + '">' + (marginShown < 0 ? '−' : '+') + fmtDur(marginShown) + '</b></div>' : '<div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - dep) + '</b></div>') +
     '<div class="k"><span>Reste</span><b>' + (rd ? st.remKm.toFixed(0) : total.toFixed(0)) + ' km</b></div>' +
-    '<div class="k"><span>Vitesse mini pour tenir ' + limL + '</span><b>' + (rd && isFinite(st.minSpeed) ? st.minSpeed.toFixed(1) + ' km/h' : '—') + '</b></div>' +
+    (lm ? '<div class="k"><span>Vitesse mini pour tenir ' + limL + '</span><b>' + (rd && isFinite(st.minSpeed) ? st.minSpeed.toFixed(1) + ' km/h' : '—') + '</b></div>' : '<div class="k"><span>Vitesse prévue</span><b>' + (S.track.total / ((st.plannedFinish - dep) / 3600e3)).toFixed(1) + ' km/h</b></div>') +
     '<div class="k" style="grid-column:1/3"><span>Prochain contrôle</span><b>' + (nxt ? esc(nxt.name) + ' · km ' + nxt.km.toFixed(0) + ' · ' + fmtDT(nxt.eta) : rd && st.done ? '—' : esc(P[1].name) + ' · ' + fmtDT(P[1].arr)) + '</b></div>' +
     '</div></div>';
   const list = rd ? st.etas.slice(0, 6) : P.slice(1, 7).map(c => ({ name: c.name, km: c.km, eta: c.arr, stop: c.stop }));
@@ -892,7 +892,7 @@ function renderSettings() {
 function renderHelp() {
   const sec = (t, b, open) => '<details class="hl"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div>' + b + '</div></details>';
   return '<button class="g" data-act="help-off" style="justify-self:start">‹ Retour</button><div class="card"><h2>Aide · MyBikePlanner</h2><div class="msg" style="margin:0">Suivre une sortie (PBP, BRM…) par rapport au planning prévu. Tout reste sur ce téléphone : aucun compte, aucun serveur. Touche un titre pour déplier.</div></div>' +
-    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). Pour une sortie libre, la limite est estimée à 1,25 × la durée prévue et reste modifiable.</p>', true) +
+    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). Une <b>sortie libre</b> n’a pas de limite : l’app affiche seulement la durée prévue et la progression (la limite interne, 1,25 × la durée prévue, n’est pas montrée).</p>', true) +
     sec('🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>') +
     sec('📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>') +
     sec('🗺️ Onglet Plan', '<ul><li><b>Départ & limite</b> : heure de départ et temps maximum.</li><li><b>Étapes</b> : pour chaque contrôle, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>') +
