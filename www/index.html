@@ -125,7 +125,7 @@ body.race{--rok:#5EE08A;--ramb:#FFB224;--rmut:#A9B4C2;--rcard:#151A21;--rline:#2
   <button class="g" data-act="manual">✏️ Saisir un passage</button>
 </div>
 <input type="file" id="gpxfile" accept=".gpx,application/gpx+xml,text/xml,application/xml,*/*" hidden>
-<input type="file" id="jsonfile" accept=".json,application/json" hidden>
+<input type="file" id="jsonfile" accept="*/*" hidden>
 <script src="lib/leaflet.js"></script>
 <script>
 // ==CORE==
@@ -871,7 +871,7 @@ function renderHelp() {
     sec('🏁 Mode course (affichage épuré)', '<p>Bouton « 🏁 Mode course » en haut de l’Accueil du circuit. Pensé pour la fatigue : gros chiffres, un seul bouton.</p><ul><li><b>Course</b> : avance/retard, prochaine étape (km, heure estimée, heure prévue), reste et arrivée. Le bouton <b>« Je suis à l’étape »</b> ouvre le pointage ; l’icône cible (en haut à droite) met à jour le GPS.</li><li><b>Étapes</b> : feuille de route, la prochaine est encadrée.</li><li><b>Météo</b> : température, pluie et vent aux prochaines étapes.</li><li><b>Pointage</b> : l’heure est proposée, ajuste avec −5 / +5 min, puis <b>Valider</b>.</li><li><b>Détails</b> : retour à l’app complète.</li></ul><p>Sans étapes intermédiaires, l’écran se simplifie et le gros bouton devient « Ma position ».</p>') +
     sec('📋 Onglet Route (feuille de route)', '<p>Tableau <b>prévu / réel / écart ±</b>. Les passages déjà effectués utilisent l’heure réelle (exacte si saisie à la main, « ≈ » si interpolée). Les suivants affichent une estimation en italique.</p>') +
     sec('🌦️ Carte et météo', '<ul><li><b>Flèches</b> le long du tracé : sens du vent (vers où il souffle). <span style="color:#ef4444">Rouge</span> = de face, <span style="color:#22c55e">vert</span> = dans le dos, gris = de côté. Touche une flèche pour le détail.</li><li><b>Couleur du trajet</b> = température (bleu froid → rouge chaud). <b>Halo bleu</b> = pluie, plus épais si plus fort.</li><li><b>Calques</b> : Vent, Température, Pluie activables séparément.</li><li><b>Moment affiché</b> : « À mon passage » (météo à l’heure prévue de passage en chaque point) ou « Heure fixe » avec curseur.</li><li><b>Devant moi / Tout le parcours</b> : cadrage. Les étapes sont les points violets étiquetés.</li><li><b>Courbes</b> sous la carte : température et ressentie, précipitations (probabilité, intensité) et nuages, vent et rafales, altitude, en fonction de l’heure de passage.</li></ul><p>Les prévisions viennent d’Open-Meteo et ne portent que sur <b>7 jours</b> : pour un départ plus lointain, elles apparaissent à l’approche. Hors ligne, les dernières données reçues restent affichées.</p><p>Le fond de carte (OpenStreetMap) est facultatif : décoche-le pour économiser les données ; le tracé reste visible.</p>') +
-    sec('💾 Sauvegarde et données', '<p>Journal → <b>Exporter</b> crée un fichier de sauvegarde de tous les circuits (traces comprises). <b>Importer</b> fusionne le fichier avec tes circuits actuels (un circuit de même identifiant est remplacé).</p><p>Les données sont stockées dans l’app. Désinstaller l’app les efface : fais un export avant. Mettre à jour l’APK par-dessus l’ancien les conserve.</p>') +
+    sec('💾 Sauvegarde et données', '<p>Journal → <b>Exporter</b> crée un fichier de sauvegarde de tous les circuits (traces comprises) et ouvre le partage Android : enregistre-le dans Drive, envoie-le par mail ou vers tes fichiers. <b>Importer</b> fusionne le fichier avec tes circuits actuels (un circuit de même identifiant est remplacé).</p><p>Les données sont stockées dans l’app. Désinstaller l’app les efface : fais un export avant. Mettre à jour l’APK par-dessus l’ancien les conserve.</p>') +
     sec('🛟 Dépannage', '<ul><li><b>« Autorisation refusée »</b> : active la localisation pour l’app dans les réglages Android.</li><li><b>« Position à X km du parcours : non enregistrée »</b> : tu es hors tolérance. Augmente la tolérance dans Plan, ou saisis le passage à la main.</li><li><b>« Avant le départ »</b> : la position n’est enregistrée qu’à partir de 30 min avant l’heure de départ.</li><li><b>Météo indisponible</b> : pas de réseau ; réessaie avec « ↻ Actualiser ».</li><li><b>Départ modifié mais heures inchangées</b> : touche « ↻ Actualiser » dans Météo.</li><li><b>Bouton retour Android</b> : revient à la liste des circuits.</li></ul>') +
     '<div class="msg" style="text-align:center">MyBikePlanner · usage personnel · estimations indicatives, pas un chronométrage officiel.</div>';
 }
@@ -897,6 +897,17 @@ function render() {
 }
 
 // ===== Actions =====
+async function exportData() {
+  const json = JSON.stringify(packG()), d = new Date(), name = 'mybikeplanner-sauvegarde-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json', C = window.Capacitor;
+  if (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.Filesystem && C.Plugins.Share) {
+    try {
+      const r = await C.Plugins.Filesystem.writeFile({ path: name, data: json, directory: 'CACHE', encoding: 'utf8' });
+      await C.Plugins.Share.share({ title: 'Sauvegarde MyBikePlanner', files: [r.uri], dialogTitle: 'Enregistrer ou envoyer la sauvegarde' });
+    } catch (e) { if (!/cancel/i.test(String(e && e.message || e))) alert('Export impossible : ' + (e && e.message || e)); }
+    return;
+  }
+  const u = URL.createObjectURL(new Blob([json], { type: 'application/json' })), l = document.createElement('a'); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
 function addLog(km, t, src) { S.log = S.log.filter(r => !(Math.abs(r.t - t) < 30000)); S.log.push({ t, km, src }); save(); }
 function updateGPS(silent) {
   if (!S || !S.track) return;
@@ -1034,10 +1045,7 @@ document.addEventListener('click', e => {
   else if (act === 'maprefresh') fetchMapWeather(true);
   else if (act === 'mapfit-all') { if (mapObj && mapAll) mapObj.fitBounds(mapAll); }
   else if (act === 'mapfit-me') { if (lastReading()) fitAhead(); else setMapMsg('Aucune position enregistrée : touche « Position GPS » dans l’onglet Accueil.'); }
-  else if (act === 'export') {
-    const blob = new Blob([JSON.stringify(packG())], { type: 'application/json' });
-    const u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = 'mybikeplanner-sauvegarde.json'; l.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
-  }
+  else if (act === 'export') exportData();
   else if (act === 'import') $('#jsonfile').click();
 });
 document.addEventListener('input', e => {

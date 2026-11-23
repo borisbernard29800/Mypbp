@@ -1,1 +1,1 @@
-{"name":"mypbp","version":"1.0.0","private":true,"description":"Suivi Paris-Brest-Paris autonome","dependencies":{"@capacitor/android":"^8.6.2","@capacitor/cli":"^8.6.2","@capacitor/core":"^8.6.2","leaflet":"^1.9.4"}}
+{"name":"mypbp","version":"1.0.0","private":true,"description":"Suivi Paris-Brest-Paris autonome","dependencies":{"@capacitor/android":"^8.6.2","@capacitor/cli":"^8.6.2","@capacitor/core":"^8.6.2","@capacitor/filesystem":"^8.1.5","@capacitor/share":"^8.0.3","leaflet":"^1.9.4"}}
