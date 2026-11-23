@@ -68,7 +68,7 @@ header{gap:6px}
 .ride{cursor:pointer;position:relative}.rdel{position:absolute;top:8px;right:6px;font-size:18px!important;padding:6px 10px!important}.rn{padding-right:34px}
 .ctl-t{background:#0b1220e6;color:#fff;border:1px solid #e8edf7;border-radius:6px;font:600 11px system-ui;padding:1px 5px;box-shadow:none}.ctl-t:before{display:none}.ride:active{background:var(--card2)}
 .rn{font-size:18px;font-weight:700;margin-bottom:2px}
-#map{height:58vh;min-height:360px;border-radius:12px;overflow:hidden}
+#map{height:40vh;min-height:250px;border-radius:12px;overflow:hidden}
 .leaflet-container{background:var(--mapbg);font:inherit}
 .leaflet-div-icon{background:none;border:none}
 .wmk{display:flex;flex-direction:column;align-items:center}
@@ -104,7 +104,7 @@ body.race{background:var(--rbg);padding-bottom:calc(100px + env(safe-area-inset-
 .hl{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 14px}.hl summary{padding:14px 0;font-weight:700;cursor:pointer}.hl div{padding-bottom:12px;font-size:15px;color:#cbd5e6}.hl ul,.hl ol{padding-left:20px;margin:6px 0}.hl li{margin:6px 0}.hl p{margin:8px 0}
 .topts{display:grid;gap:8px}.topt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font:inherit}.topt span{font-size:13px;color:var(--mut)}.topt.on{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .nm{display:flex;align-items:center}.nm input{flex:1}.clr{font-size:16px!important;padding:2px 6px!important}
-.prof .prow{display:flex;gap:8px;align-items:center;margin-top:8px}.prof .prow input{flex:1}.prof .prow button{min-width:48px;padding:10px 12px}.pinfo{font-size:16px;margin-top:6px;line-height:1.5}
+.prof .prow{display:flex;gap:8px;align-items:center;margin-top:8px}.prof .prow input{flex:1}.prof .prow button{min-width:48px;padding:10px 12px}.pinfo{font-size:15px;margin-top:4px;line-height:1.4}.prof{padding:10px 12px}.prof h2{margin-bottom:4px}
 .sw{display:flex;align-items:center;gap:10px;margin:12px 0 4px;font-size:15px;color:var(--tx)}.sw input{width:22px;height:22px}
 .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px 0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font:inherit;font-size:14px}.seg button.on{background:var(--card2);color:var(--tx);border-color:var(--acc);font-weight:600}
 .calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;text-transform:capitalize}
@@ -564,7 +564,7 @@ function renderProfile() {
   const el = $('#prof'); if (!el || !S.track) return;
   const T = S.track, N = Math.min(500, Math.max(60, Math.round(T.total * 1.5))), st = T.total / N, E = [], K = [], cum = [0];
   for (let i = 0; i <= N; i++) { K.push(i * st); E.push(smEle(T, i * st)); if (i) cum.push(cum[i - 1] + Math.max(0, E[i] - E[i - 1])); }
-  const W = 340, H = 180, ml = 34, mr = 8, mt = 10, mb = 22, pw = W - ml - mr, ph = H - mt - mb;
+  const W = 340, H = 140, ml = 34, mr = 8, mt = 8, mb = 20, pw = W - ml - mr, ph = H - mt - mb;
   const R = niceRange(Math.min(...E), Math.max(...E)), sx = km => ml + km / T.total * pw, sy = v => mt + ph - (v - R.lo) / ((R.hi - R.lo) || 1) * ph;
   profG = { T, ml, pw, W, sx, sy, cum, K, E, N, tot: cum[N] };
   let g = '';
@@ -578,9 +578,8 @@ function renderProfile() {
   g += '<line id="pcur" x1="0" x2="0" y1="' + mt + '" y2="' + (mt + ph) + '" style="stroke:var(--tx)" stroke-width="1.5"/><circle id="pdot" cx="0" cy="0" r="4.5" style="fill:var(--tx)" stroke="#7c3aed" stroke-width="2"/>';
   if (ui.cur == null) ui.cur = rd ? rd.km : 0;
   el.innerHTML = '<h2>Profil d’altitude</h2><svg id="psvg" class="ch" viewBox="0 0 ' + W + ' ' + H + '" style="touch-action:none">' + g + '</svg>' +
-    '<div class="leg"><span><i style="background:#60a5fa"></i>descente</span><span><i style="background:#34d399"></i>&lt; 3 %</span><span><i style="background:#fbbf24"></i>3–6 %</span><span><i style="background:#fb923c"></i>6–9 %</span><span><i style="background:#ef4444"></i>&gt; 9 %</span><span><i style="background:#7c3aed"></i>étapes</span></div>' +
     '<div class="prow"><button class="b" data-act="pplay" id="pplay">▶</button><input type="range" id="pslide" min="0" max="' + T.total.toFixed(1) + '" step="0.5" value="' + ui.cur + '"><button class="g" data-act="pspeed" id="pspeed">×' + (ui.pspd || 1) + '</button></div>' +
-    '<div id="pinfo" class="pinfo"></div><div class="msg">Dénivelé + ' + Math.round(T.ascent) + ' m · distance ' + T.total.toFixed(0) + ' km · vitesse moyenne prévue ' + (T.total / ((curPlan()[curPlan().length - 1].arr - S.depMs) / 3600e3)).toFixed(1) + ' km/h</div><div class="msg">Fais glisser le curseur, touche le profil ou lance ▶ pour parcourir le trajet : la carte suit.</div>';
+    '<div id="pinfo" class="pinfo"></div>';
   moveCursor(false);
 }
 function moveCursor(follow) {
@@ -616,10 +615,14 @@ function renderMap() {
   const hourMode = ui.mapMode === 'hour', Ly = ui.layers;
   const chip = (k, t) => '<label class="chip"><input type="checkbox" data-layer="' + k + '"' + (Ly[k] ? ' checked' : '') + '> ' + t + '</label>';
   return '<div class="card" style="padding:8px"><div id="map"></div>' +
+    '</div>' +
+    '<div class="card prof" id="prof"></div>' +
+    '<details class="hl"><summary>Légende et infos</summary><div>' +
     '<div class="legend"><span><b class="ar">➤</b> flèches = sens du vent</span><span><i class="dot" style="border-color:#ef4444"></i> face</span><span><i class="dot" style="border-color:#22c55e"></i> dos</span></div>' +
     '<div class="legend"><span>Trajet = température :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div>' +
-    '<div class="legend"><span><i class="dot" style="background:#3b82f680;border:0"></i> halo bleu = pluie (épaisseur = mm/h)</span></div><div class="legend"><span>👆 Touche le tracé pour noter un passage à cet endroit.</span></div></div>' +
-    '<div class="card prof" id="prof"></div>' +
+    '<div class="legend"><span><i class="dot" style="background:#3b82f680;border:0"></i> halo bleu = pluie (épaisseur = mm/h)</span></div>' +
+    '<div class="leg"><span>Pente :</span><span><i style="background:#60a5fa"></i>descente</span><span><i style="background:#34d399"></i>&lt; 3 %</span><span><i style="background:#fbbf24"></i>3–6 %</span><span><i style="background:#fb923c"></i>6–9 %</span><span><i style="background:#ef4444"></i>&gt; 9 %</span><span><i style="background:#7c3aed"></i>étapes</span></div>' +
+    '<div class="msg">Dénivelé + ' + Math.round(S.track.ascent) + ' m · distance ' + S.track.total.toFixed(0) + ' km. Fais glisser le curseur, touche le profil ou lance ▶ pour parcourir le trajet. Touche le tracé pour noter un passage.</div></div></details>' +
     '<div class="card"><h2>Calques</h2><div class="chips">' + chip('wind', 'Vent') + chip('temp', 'Température') + chip('rain', 'Pluie') + '</div>' +
     '<h2 style="margin-top:14px">Moment affiché</h2><div class="row2"><button class="' + (hourMode ? 'g' : 'b') + '" data-act="mapmode-pass">À mon passage</button><button class="' + (hourMode ? 'b' : 'g') + '" data-act="mapmode-hour">Heure fixe</button></div>' +
     (hourMode ? '<label id="wxl">' + wxLabel() + '</label><input type="range" id="wxs" min="0" max="120" step="1" value="' + ui.mapOff + '">' : '<div class="msg">Chaque point montre la météo prévue à l’heure où tu devrais y passer.</div>') +
