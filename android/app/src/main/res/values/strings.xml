@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Mypbp</string>
-    <string name="title_activity_main">Mypbp</string>
+    <string name="app_name">MyBikePlanner</string>
+    <string name="title_activity_main">MyBikePlanner</string>
     <string name="package_name">fr.mypbp.app</string>
     <string name="custom_url_scheme">fr.mypbp.app</string>
 </resources>

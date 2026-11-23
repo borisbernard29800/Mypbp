@@ -24,6 +24,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk mypbp.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk mybikeplanner.apk
           gh release delete latest --yes --cleanup-tag --repo ${{ github.repository }} || true
-          gh release create latest mypbp.apk --repo ${{ github.repository }} --target ${{ github.sha }} --title "Mypbp (APK)" --notes "APK signé en debug, à installer sur Android."
+          gh release create latest mybikeplanner.apk --repo ${{ github.repository }} --target ${{ github.sha }} --title "MyBikePlanner (APK)" --notes "APK à installer sur Android (signature fixe : les mises à jour conservent les données)."

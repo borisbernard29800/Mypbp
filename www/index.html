@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1220">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Mypbp">
-<title>Mypbp — Paris-Brest-Paris</title>
+<meta name="apple-mobile-web-app-title" content="MyBikePlanner">
+<title>MyBikePlanner</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="lib/leaflet.css">
 <style>
 :root{--bg:#0b1220;--card:#131c2e;--card2:#1a2540;--line:#26334f;--tx:#e8edf7;--mut:#8b9ab8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--acc:#60a5fa;--pad:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -18,7 +20,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 header h1{font-size:18px;margin:0;letter-spacing:.2px}
 header small{color:var(--mut)}
 nav{display:flex;gap:6px;padding:6px var(--pad) 10px;position:sticky;top:0;background:linear-gradient(var(--bg) 80%,transparent);z-index:5}
-nav button{flex:1;padding:9px 0;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font-size:14px}
+nav button{flex:1;padding:9px 0;min-width:0;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font-size:13px}
 nav button.on{background:var(--acc);color:#07111f;border-color:var(--acc);font-weight:600}
 main{padding:0 var(--pad);display:grid;gap:12px;max-width:640px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
@@ -56,13 +58,34 @@ button.x{background:none;border:0;color:var(--bad);font-size:18px;padding:2px 8p
 .rt td{padding:8px 3px;font-size:14px}.rt td.num,.rt td:nth-child(n+2){white-space:nowrap}.rt td:first-child{width:36%;font-size:13px}.rt tr.next td{background:var(--card2)}.rt .est{color:var(--mut);font-style:italic}.rt small{display:block;color:var(--mut);font-size:11px}.rt tr.pass td:first-child{color:var(--mut)}
 .empty{color:var(--mut);text-align:center;padding:18px 6px}
 .num{font-variant-numeric:tabular-nums}
+
+header .lg{display:flex}header h1{flex:1;margin:0 0 0 8px}
+header{gap:6px}
+.hn{flex:1;font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.back{padding:7px 10px!important;font-size:14px}
+.ride{cursor:pointer}.ride:active{background:var(--card2)}
+.rn{font-size:18px;font-weight:700;margin-bottom:2px}
+#map{height:58vh;min-height:360px;border-radius:12px;overflow:hidden}
+.leaflet-container{background:#0f1a30;font:inherit}
+.leaflet-div-icon{background:none;border:none}
+.wmk{display:flex;flex-direction:column;align-items:center}
+.wc{width:30px;height:30px;border-radius:50%;border:3px solid #0b1220;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px #000a}
+.wt{margin-top:2px;font:600 11px system-ui;color:#fff;background:#0b1220d0;padding:1px 6px;border-radius:8px;white-space:nowrap}
+.z-lo .wt{display:none}.z-lo .wc{width:18px;height:18px;border-width:2px}.z-lo .wc svg{width:12px;height:12px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--mut);margin:8px 4px 0}
+.legend .dot{display:inline-block;width:12px;height:12px;border-radius:50%;border:3px solid;vertical-align:-2px;margin-right:3px}
+.legend .ar{color:var(--tx)}
+.tbar{display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#34d399,#fbbf24,#ef4444)}
+input[type=range]{padding:0;height:34px}
+.leaflet-popup-content{font:13px/1.4 system-ui;color:#0b1220}
 </style>
 </head>
 <body>
-<header><h1>🚴 Mypbp</h1><small id="clock"></small></header>
+<header id="hdr"></header>
 <nav id="nav">
   <button data-tab="dash">Accueil</button>
   <button data-tab="route">Route</button>
+  <button data-tab="map">Carte</button>
   <button data-tab="plan">Plan</button>
   <button data-tab="log">Journal</button>
 </nav>
@@ -71,9 +94,9 @@ button.x{background:none;border:0;color:var(--bad);font-size:18px;padding:2px 8p
   <button class="b" data-act="gps">📍 Position GPS</button>
   <button class="g" data-act="manual">✏️ Saisir un passage</button>
 </div>
-<input type="file" id="gpxfile" accept=".gpx,application/gpx+xml,text/xml,application/xml" hidden>
+<input type="file" id="gpxfile" accept=".gpx,application/gpx+xml,text/xml,application/xml,*/*" hidden>
 <input type="file" id="jsonfile" accept=".json,application/json" hidden>
-
+<script src="lib/leaflet.js"></script>
 <script>
 // ==CORE==
 const RAD = Math.PI / 180;
@@ -94,7 +117,13 @@ function parseGPX(txt) {
     P.push([+la[1], +lo[1], e ? +e[1] : 0]);
   }
   const nm = /<trk>[\s\S]*?<name>\s*(?:<!\[CDATA\[)?([^<\]]*)/.exec(txt);
-  return { pts: P, name: nm ? nm[1].trim() : 'Parcours' };
+  const W = [];
+  for (const c0 of txt.split('<wpt').slice(1)) {
+    const c = c0.split('</wpt>')[0], head = c.slice(0, c.indexOf('>'));
+    const la = /lat="([-\d.]+)"/.exec(head), lo = /lon="([-\d.]+)"/.exec(head), n = /<name>\s*(?:<!\[CDATA\[)?([^<\]]*)/.exec(c);
+    if (la && lo && n && n[1].trim()) W.push({ lat: +la[1], lon: +lo[1], name: n[1].trim() });
+  }
+  return { pts: P, name: nm ? nm[1].trim() : 'Parcours', wpts: W };
 }
 function buildTrack(P, name) {
   const n = P.length;
@@ -223,6 +252,29 @@ function actualAt(log, km, depMs, tol = 1.5) {
   }
   return null;
 }
+function brmNominal(km) { return km < 300 ? 200 : km < 400 ? 300 : km < 600 ? 400 : km < 1000 ? 600 : km < 1200 ? 1000 : 1200; }
+function brmLimitH(km) { return { 200: 13.5, 300: 20, 400: 27, 600: 40, 1000: 75, 1200: 90 }[brmNominal(km)]; }
+function isPBP(T) { return T.total > 1100 && T.total < 1350 && snap(T, 48.39, -4.49, null, null).d < 5000; }
+function samplePoints(T, maxN = 45, minStep = 15) {
+  const step = Math.max(minStep, Math.ceil(T.total / maxN)), out = [];
+  for (let k = 0; k < T.total; k += step) out.push(k);
+  out.push(T.total);
+  return out.map(km => Object.assign({ km }, posAtKm(T, km), { bearing: bearingAt(T, km) }));
+}
+function seriesAt(pt, ts) {
+  const k = Math.round((ts / 1000 - pt.t0) / 3600);
+  if (!pt.temp || k < 0 || k >= pt.temp.length) return null;
+  return { temp: pt.temp[k], rain: pt.rain[k], code: pt.code[k], ws: pt.ws[k], wd: pt.wd[k] };
+}
+function tempColor(t) {
+  const st = [[0, [59, 130, 246]], [10, [34, 211, 238]], [18, [52, 211, 153]], [25, [251, 191, 36]], [32, [239, 68, 68]]];
+  if (t <= st[0][0]) return 'rgb(' + st[0][1] + ')';
+  for (let i = 1; i < st.length; i++) if (t <= st[i][0]) {
+    const a = st[i - 1], b = st[i], f = (t - a[0]) / (b[0] - a[0]);
+    return 'rgb(' + a[1].map((v, j) => Math.round(v + f * (b[1][j] - v))).join(',') + ')';
+  }
+  return 'rgb(' + st[4][1] + ')';
+}
 function windInfo(speed, from, bearing) {
   const c = speed * Math.cos((from - bearing) * RAD);
   return c >= 5 ? { t: 'face', v: Math.round(c) } : c <= -5 ? { t: 'dos', v: Math.round(-c) } : { t: 'côté', v: Math.round(speed) };
@@ -232,40 +284,84 @@ function windInfo(speed, from, bearing) {
 // ===== État & stockage local =====
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let S = { v: 1, track: null, controls: [], depMs: new Date(2027, 7, 15, 17, 0).getTime(), limitH: 90, mode: 'plan', log: [], weather: null, tab: 'dash' };
-let memOnly = false, ui = { manual: false, msg: '', wxMsg: '' };
+const LOGO = '<svg viewBox="0 0 64 64" width="30" height="30" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#60a5fa" stroke-width="3.6"><circle cx="15" cy="42" r="11"/><circle cx="49" cy="42" r="11"/></g><g stroke="#e8edf7" stroke-width="3.6"><path d="M15 42L29 42L24 24Z"/><path d="M24 24L43 24L29 42"/><path d="M43 24L49 42"/><path d="M43 24L41.5 18M37.5 18L46.5 18"/><path d="M24 24L23 19M19 19L28 19"/></g></svg>';
+let G = { v: 2, rides: [], cur: null };
+let S = null; // circuit ouvert (objet de G.rides)
+let memOnly = false;
+let ui = { tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
+let mapObj = null, wxLayer = null, mapAll = null;
 
+function newRide(name) {
+  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(7, 0, 0, 0);
+  return { id: 'r' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name, kind: 'Circuit', track: null, controls: [], speed: 22, depMs: d.getTime(), limitH: 90, mode: 'plan', log: [], weather: null, mapWx: null };
+}
 function idb() { return new Promise((res, rej) => { const r = indexedDB.open('mypbp', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 async function kvGet(k) { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
 async function kvSet(k, v) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
 let saveTimer;
-function save() { clearTimeout(saveTimer); saveTimer = setTimeout(async () => { try { await kvSet('state', S); } catch (e) { memOnly = true; } }, 250); }
-async function load() { try { const s = await kvGet('state'); if (s && s.v === 1) S = Object.assign(S, s); } catch (e) { memOnly = true; } }
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(async () => { try { await kvSet('state', G); } catch (e) { memOnly = true; } }, 250); }
+async function load() {
+  try {
+    const s = await kvGet('state');
+    if (s && s.v === 2) G = s;
+    else if (s && s.v === 1 && s.track) { // migration de la version mono-circuit
+      const r = newRide('Paris-Brest-Paris'); r.kind = 'PBP';
+      Object.assign(r, { track: s.track, controls: s.controls, depMs: s.depMs, limitH: s.limitH, mode: s.mode, log: s.log || [], weather: s.weather || null });
+      G = { v: 2, rides: [r], cur: null };
+    }
+  } catch (e) { memOnly = true; }
+  S = G.rides.find(r => r.id === G.cur) || null;
+}
 
 // ===== Format =====
 const pad = n => String(n).padStart(2, '0');
 function fmtDur(ms) { const m = Math.round(Math.abs(ms) / 60000); return Math.floor(m / 60) + 'h' + pad(m % 60); }
+const limLabel = h => fmtDur(h * 3600e3);
 function fmtDT(ms) { return new Date(ms).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 function fmtT(ms) { return new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 function toInput(ms) { const d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 function ago(ms) { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "à l'instant" : m < 60 ? 'il y a ' + m + ' min' : 'il y a ' + fmtDur(Date.now() - ms); }
+const fmtS = ms => new Date(ms).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
 
-function curPlan() { return S.track ? buildPlan(S.controls, S.depMs) : null; }
-function lastReading() {
-  const L = S.log.filter(r => r.t <= Date.now() + 5 * 60000).sort((a, b) => a.t - b.t);
+function curPlan(r = S) { return r && r.track ? buildPlan(r.controls, r.depMs) : null; }
+function lastReading(r = S) {
+  const L = r.log.filter(x => x.t <= Date.now() + 5 * 60000).sort((a, b) => a.t - b.t);
   return L.length ? L[L.length - 1] : null;
 }
 
-// ===== Rendu =====
+// ===== Accueil : liste des circuits =====
 function bar(frac, tick, dtick) {
   const c = x => Math.max(0, Math.min(100, x * 100)).toFixed(1);
   return '<div class="bar"><div class="f" style="width:' + c(frac) + '%"></div>' +
     (tick != null ? '<div class="t" style="left:calc(' + c(tick) + '% - 1px)"></div>' : '') +
     (dtick != null ? '<div class="d" style="left:calc(' + c(dtick) + '% - 1px)"></div>' : '') + '</div>';
 }
+function renderHome() {
+  const now = Date.now();
+  const R = G.rides.slice().sort((a, b) => {
+    const ua = a.depMs + a.limitH * 3600e3 >= now, ub = b.depMs + b.limitH * 3600e3 >= now;
+    return ua !== ub ? (ua ? -1 : 1) : ua ? a.depMs - b.depMs : b.depMs - a.depMs;
+  });
+  let h = '<button class="b" data-act="new" style="width:100%">＋ Nouveau circuit (importer un GPX)</button>';
+  if (!R.length) return h + '<div class="card empty">Aucun circuit pour l’instant.<br>Importe un fichier GPX (PBP, BRM 200, 300…) pour commencer.</div>';
+  for (const r of R) {
+    const rd = lastReading(r), P = curPlan(r), st = computeStatus(P, rd, r.limitH, r.mode);
+    let label, cls = 'mut';
+    if (rd && st.done) { label = 'Terminé · ' + fmtDT(rd.t); cls = 'ok'; }
+    else if (rd) { const d = st.delta, w = Math.abs(d) < 15 * 60e3; label = 'En course · km ' + rd.km.toFixed(0) + ' · ' + (w ? 'dans le plan' : (d > 0 ? '+' : '−') + fmtDur(d)); cls = w ? 'warn' : d > 0 ? 'ok' : 'bad'; }
+    else if (now < r.depMs) { const dd = Math.floor((r.depMs - now) / 86400e3); label = 'Départ ' + fmtDT(r.depMs) + ' · dans ' + (dd ? dd + ' j' : fmtDur(r.depMs - now)); }
+    else label = 'Départ passé · aucune position';
+    h += '<div class="card ride" data-open="' + r.id + '"><div class="rn">' + esc(r.name) + '</div>' +
+      '<div class="sub">' + esc(r.kind) + ' · ' + r.track.total.toFixed(0) + ' km · D+ ' + Math.round(r.track.ascent) + ' m · limite ' + limLabel(r.limitH) + '</div>' +
+      '<div class="sub ' + cls + '">' + label + '</div>' + (rd ? bar(rd.km / r.track.total, null, null) : '') + '</div>';
+  }
+  return h + (memOnly ? '<div class="msg">⚠️ Stockage local indisponible : les données seront perdues à la fermeture.</div>' : '');
+}
+
+// ===== Accueil d'un circuit =====
 function renderDash() {
-  if (!S.track) return '<div class="card empty">Aucun parcours.<br>Va dans <b>Plan</b> pour importer un fichier GPX.</div>';
-  const P = curPlan(), now = Date.now(), dep = S.depMs, lim = S.limitH, limMs = lim * 3600e3;
+  if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
+  const P = curPlan(), now = Date.now(), dep = S.depMs, lim = S.limitH, limMs = lim * 3600e3, limL = limLabel(lim);
   const rd = lastReading(), st = computeStatus(P, rd, lim, S.mode), total = st.total;
   const elapsed = Math.max(0, now - dep);
   const pill = now < dep ? 'Départ dans ' + (Math.floor((dep - now) / 86400e3) ? Math.floor((dep - now) / 86400e3) + ' j ' : '') + fmtDur((dep - now) % 86400e3)
@@ -276,16 +372,15 @@ function renderDash() {
     hero += '<div class="big ' + (w ? 'warn' : good ? 'ok' : 'bad') + '">' + (w ? 'dans le plan' : (good ? '+' : '−') + fmtDur(d)) + '</div>' +
       '<div class="sub">' + (w ? '' : good ? "d'avance" : 'de retard') + ' · km ' + rd.km.toFixed(0) + ' / ' + total.toFixed(0) + ' · ' + ago(rd.t) + ' (' + rd.src + ')</div>';
   } else {
-    hero += '<div class="big">' + fmtDur(limMs) + '</div><div class="sub">temps max · aucune position enregistrée</div>';
+    hero += '<div class="big">' + limL + '</div><div class="sub">temps max · aucune position enregistrée</div>';
   }
-  hero += '</div>';
-  if (ui.msg) hero = hero.replace('</div></div>', '</div><div class="msg">' + esc(ui.msg) + '</div></div>');
+  hero += ui.msg ? '<div class="msg">' + esc(ui.msg) + '</div></div>' : '</div>';
   const kmNow = rd ? rd.km : 0, plKm = now >= dep ? kmAtTime(P, now) : 0;
   const finishShown = rd ? st.finish : st.plannedFinish, marginShown = rd ? st.margin : st.plannedMargin;
-  const mcls = marginShown < 0 ? 'bad' : marginShown < 3 * 3600e3 ? 'warn' : 'ok';
+  const mcls = marginShown < 0 ? 'bad' : marginShown < 0.1 * limMs ? 'warn' : 'ok';
   const nxt = st.etas && st.etas[0];
-  let h = hero + '<div class="card"><h2>Course vs limite ' + lim + ' h</h2>' +
-    '<div class="lbl"><span>Temps écoulé</span><span class="num">' + fmtDur(elapsed) + ' / ' + lim + 'h00</span></div>' +
+  let h = hero + '<div class="card"><h2>Course vs limite ' + limL + '</h2>' +
+    '<div class="lbl"><span>Temps écoulé</span><span class="num">' + fmtDur(elapsed) + ' / ' + limL + '</span></div>' +
     bar(elapsed / limMs, (st.plannedFinish - dep) / limMs, null) +
     '<div class="lbl"><span>départ</span><span>▮ fin prévue ' + fmtDur(st.plannedFinish - dep) + '</span></div>' +
     '<div class="lbl"><span>Distance réalisée</span><span class="num">' + kmNow.toFixed(0) + ' / ' + total.toFixed(0) + ' km</span></div>' +
@@ -293,12 +388,11 @@ function renderDash() {
     '<div class="leg"><span><i style="background:var(--acc)"></i>réalisé</span><span><i style="background:var(--warn)"></i>où je devrais être</span></div>' +
     '<div class="grid" style="margin-top:12px">' +
     '<div class="k"><span>Arrivée projetée</span><b>' + fmtDT(finishShown) + '</b></div>' +
-    '<div class="k"><span>Marge sur les ' + lim + ' h</span><b class="' + mcls + '">' + (marginShown < 0 ? '−' : '+') + fmtDur(marginShown) + '</b></div>' +
+    '<div class="k"><span>Marge sur les ' + limL + '</span><b class="' + mcls + '">' + (marginShown < 0 ? '−' : '+') + fmtDur(marginShown) + '</b></div>' +
     '<div class="k"><span>Reste</span><b>' + (rd ? st.remKm.toFixed(0) : total.toFixed(0)) + ' km</b></div>' +
-    '<div class="k"><span>Vitesse mini pour tenir ' + lim + ' h</span><b>' + (rd && isFinite(st.minSpeed) ? st.minSpeed.toFixed(1) + ' km/h' : '—') + '</b></div>' +
+    '<div class="k"><span>Vitesse mini pour tenir ' + limL + '</span><b>' + (rd && isFinite(st.minSpeed) ? st.minSpeed.toFixed(1) + ' km/h' : '—') + '</b></div>' +
     '<div class="k" style="grid-column:1/3"><span>Prochain contrôle</span><b>' + (nxt ? esc(nxt.name) + ' · km ' + nxt.km.toFixed(0) + ' · ' + fmtDT(nxt.eta) : rd && st.done ? '—' : esc(P[1].name) + ' · ' + fmtDT(P[1].arr)) + '</b></div>' +
     '</div></div>';
-  // prochains contrôles
   const list = rd ? st.etas.slice(0, 6) : P.slice(1, 7).map(c => ({ name: c.name, km: c.km, eta: c.arr, stop: c.stop }));
   h += '<div class="card"><h2>Prochains passages ' + (rd && S.mode === 'real' ? '(au rythme réel)' : '(prévu)') + '</h2><table><tr><th>Contrôle</th><th>Km</th><th>Heure</th></tr>' +
     list.map(c => '<tr><td>' + esc(c.name) + (c.stop >= 90 ? ' 🌙' : '') + '</td><td class="num">' + c.km.toFixed(0) + '</td><td class="num">' + fmtDT(c.eta) + '</td></tr>').join('') + '</table></div>';
@@ -307,14 +401,13 @@ function renderDash() {
 }
 function wxTargets(P, rd, st) {
   const T = S.track, t = [];
-  const km0 = rd ? rd.km : 0;
-  t.push({ label: rd ? 'Ma position' : 'Départ', km: km0, ts: rd ? Date.now() : S.depMs });
+  t.push({ label: rd ? 'Ma position' : 'Départ', km: rd ? rd.km : 0, ts: rd ? Date.now() : S.depMs });
   const list = rd ? st.etas.slice(0, 5) : P.slice(1, 6).map(c => ({ name: c.name, km: c.km, eta: c.arr }));
   for (const c of list) t.push({ label: c.name, km: c.km, ts: c.eta });
   return t.map(x => Object.assign(x, posAtKm(T, x.km), { bearing: bearingAt(T, x.km) }));
 }
 const WX = c => c === 0 ? '☀️' : c <= 3 ? '⛅' : c <= 48 ? '🌫️' : c <= 67 ? '🌧️' : c <= 77 ? '❄️' : c <= 82 ? '🌦️' : '⛈️';
-function renderWeather(P, rd, st) {
+function renderWeather() {
   const w = S.weather;
   let h = '<div class="card"><h2>Météo sur le parcours</h2>';
   if (!w || !w.items.length) h += '<div class="mut" style="font-size:14px">Pas encore de données. Touche « Position GPS » (réseau requis).</div>';
@@ -323,7 +416,7 @@ function renderWeather(P, rd, st) {
       ? '<tr><td>' + esc(i.label) + '</td><td colspan="5" class="mut">hors prévision (' + fmtDT(i.ts) + ')</td></tr>'
       : '<tr><td>' + esc(i.label) + '</td><td>' + fmtT(i.ts) + '</td><td>' + WX(i.code) + '</td><td>' + Math.round(i.temp) + '°</td><td>' + (i.rain > 0 ? i.rain.toFixed(1) : '–') + '</td><td>' +
         '<span class="' + (i.wind.t === 'face' ? 'bad' : i.wind.t === 'dos' ? 'ok' : 'mut') + '">' + i.wind.t + ' ' + i.wind.v + '</span></td></tr>').join('') + '</table>' +
-      '<div class="msg">Mis à jour ' + ago(w.at) + ' · prévisions aux heures de passage estimées</div>';
+      '<div class="msg">Mis à jour ' + ago(w.at) + ' · prévisions aux heures de passage estimées · voir l’onglet Carte</div>';
   }
   if (ui.wxMsg) h += '<div class="msg">' + esc(ui.wxMsg) + '</div>';
   return h + '</div>';
@@ -334,16 +427,17 @@ function renderManual() {
   return '<div class="card"><h2>Saisir un passage</h2>' +
     '<label>Contrôle</label><select id="mc">' + opts + '</select>' +
     '<label>Heure de passage</label><input type="datetime-local" id="mt" value="' + toInput(Date.now()) + '">' +
-    '<label>ou kilomètre précis (facultatif)</label><input type="number" id="mk" inputmode="decimal" placeholder="ex. 312">' +
+    '<label>ou kilomètre précis (facultatif)</label><input type="number" id="mk" inputmode="decimal" placeholder="ex. 112">' +
     '<div class="row2" style="margin-top:10px"><button class="b" data-act="manual-ok">Enregistrer</button><button class="g" data-act="manual-cancel">Annuler</button></div></div>';
 }
-const fmtS = ms => new Date(ms).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
+
+// ===== Feuille de route =====
 function dcell(d, est) {
   const w = Math.abs(d) < 15 * 60e3, cls = w ? 'warn' : d > 0 ? 'ok' : 'bad';
   return '<span class="num ' + cls + (est ? ' est' : '') + '">' + (w ? '±' : d > 0 ? '+' : '−') + fmtDur(d) + '</span>';
 }
 function renderRoute() {
-  if (!S.track) return '<div class="card empty">Aucun parcours.<br>Va dans <b>Plan</b> pour importer un fichier GPX.</div>';
+  if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
   const P = curPlan(), rd = lastReading(), st = computeStatus(P, rd, S.limitH, S.mode);
   const nextKm = st.etas && st.etas[0] ? st.etas[0].km : null;
   const rows = P.map((c, i) => {
@@ -365,54 +459,156 @@ function renderRoute() {
     '<div class="leg"><span>Réel en blanc</span><span class="est">estimé en gris italique</span><span>≈ interpolé entre deux positions</span></div>' +
     '<div class="msg">Écart = prévu − réel : + en avance, − en retard.' + (rd ? ' Dernière position ' + ago(rd.t) + ' (km ' + rd.km.toFixed(0) + ').' : ' Aucune position enregistrée : seul le prévu est affiché.') + '</div></div>' + renderManual();
 }
+
+// ===== Carte météo =====
+function renderMap() {
+  if (!S.track) return '<div class="card empty">Ce circuit n’a pas de tracé.</div>';
+  const hourMode = ui.mapMode === 'hour';
+  return '<div class="card" style="padding:8px"><div id="map"></div>' +
+    '<div class="legend"><span><b class="ar">➤</b> sens du vent (vers où il souffle)</span><span><i class="dot" style="border-color:#f87171"></i> face</span><span><i class="dot" style="border-color:#34d399"></i> dos</span>' +
+    '<span><i class="dot" style="background:#3b82f680;border:0"></i> pluie (taille = mm/h)</span></div>' +
+    '<div class="legend"><span>Température :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div></div>' +
+    '<div class="card"><h2>Moment affiché</h2><div class="row2"><button class="' + (hourMode ? 'g' : 'b') + '" data-act="mapmode-pass">À mon passage</button><button class="' + (hourMode ? 'b' : 'g') + '" data-act="mapmode-hour">Heure fixe</button></div>' +
+    (hourMode ? '<label id="wxl">' + wxLabel() + '</label><input type="range" id="wxs" min="0" max="120" step="1" value="' + ui.mapOff + '">' : '<div class="msg">Chaque point montre la météo prévue à l’heure où tu devrais y passer.</div>') +
+    '<div class="row2" style="margin-top:10px"><button class="g" data-act="mapfit-me">🎯 Devant moi</button><button class="g" data-act="mapfit-all">🗺️ Tout le parcours</button></div><div class="row2" style="margin-top:8px"><button class="g" data-act="maprefresh">↻ Actualiser la météo</button><label style="margin:0;display:flex;align-items:center;gap:8px"><input type="checkbox" id="tiles" style="width:auto"' + (ui.tiles ? ' checked' : '') + '> Fond de carte</label></div>' +
+    '<div class="msg" id="mapmsg">' + esc(ui.mapMsg) + '</div></div>';
+}
+function wxLabel() { return 'Dans ' + ui.mapOff + ' h → ' + fmtDT(Date.now() + ui.mapOff * 3600e3); }
+function etaAt(P, rd, st, km) {
+  if (!rd) return timeAtKm(P, km);
+  if (km >= rd.km) return rd.t + (timeAtKm(P, km) - st.planned) * st.factor;
+  const a = actualAt(S.log, km, S.depMs);
+  return a ? a.t : timeAtKm(P, km) - st.delta;
+}
+function arrowSvg(deg) { return '<svg viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(' + deg + 'deg)"><path d="M12 2L19 21L12 16.5L5 21Z" fill="#fff" stroke="#0b1220" stroke-width="1.6" stroke-linejoin="round"/></svg>'; }
+function initMap() {
+  const el = $('#map'); if (!el) return;
+  if (!window.L) { el.innerHTML = '<div class="empty">Bibliothèque de carte indisponible.</div>'; return; }
+  const T = S.track;
+  mapObj = L.map(el, { preferCanvas: true, zoomSnap: 0.5 });
+  if (ui.tiles) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '© OpenStreetMap' }).addTo(mapObj);
+  const rd = lastReading(), stp = Math.max(1, Math.floor(T.n / 2500)), all = [], done = [], rest = [];
+  for (let i = 0; i < T.n; i += stp) { const ll = [T.lat[i], T.lon[i]]; all.push(ll); (rd && T.cum[i] / 1000 <= rd.km ? done : rest).push(ll); }
+  if (rd && done.length && rest.length) rest.unshift(done[done.length - 1]);
+  if (rd) { L.polyline(done, { color: '#5b6b8c', weight: 5, opacity: .9 }).addTo(mapObj); L.polyline(rest, { color: '#60a5fa', weight: 5, opacity: .95 }).addTo(mapObj); }
+  else L.polyline(all, { color: '#60a5fa', weight: 5, opacity: .95 }).addTo(mapObj);
+  for (const c of S.controls) {
+    const p = posAtKm(T, c.km);
+    L.circleMarker([p.lat, p.lon], { radius: 5, color: '#0b1220', weight: 2, fillColor: '#e8edf7', fillOpacity: 1 }).bindTooltip(c.name + ' · km ' + c.km.toFixed(0)).addTo(mapObj);
+  }
+  if (rd) { const p = posAtKm(T, rd.km); L.circleMarker([p.lat, p.lon], { radius: 9, color: '#fff', weight: 3, fillColor: '#f97316', fillOpacity: 1 }).bindTooltip('Moi · km ' + rd.km.toFixed(0)).addTo(mapObj); }
+  mapAll = L.latLngBounds(all).pad(0.05);
+  if (ui.mapView) mapObj.setView(ui.mapView.c, ui.mapView.z); else if (rd) fitAhead(); else mapObj.fitBounds(mapAll);
+  wxLayer = L.layerGroup().addTo(mapObj);
+  const zc = () => el.classList.toggle('z-lo', mapObj.getZoom() < 8);
+  mapObj.on('zoomend', zc); zc();
+  updateWxLayer();
+  fetchMapWeather(false);
+}
+function fitAhead() {
+  const T = S.track, rd = lastReading(); if (!mapObj || !rd) return;
+  const a = idxAt(T, Math.max(0, rd.km - 15) * 1000), b = idxAt(T, Math.min(T.total, rd.km + 180) * 1000), ll = [], st = Math.max(1, Math.floor((b - a) / 300));
+  for (let i = a; i <= b; i += st) ll.push([T.lat[i], T.lon[i]]);
+  mapObj.fitBounds(L.latLngBounds(ll).pad(0.15));
+}
+function updateWxLayer() {
+  if (!mapObj || !wxLayer) return;
+  wxLayer.clearLayers();
+  const w = S.mapWx; if (!w) return;
+  const P = curPlan(), rd = lastReading(), st = computeStatus(P, rd, S.limitH, S.mode);
+  for (const pt of w.pts) {
+    const ts = ui.mapMode === 'hour' ? Date.now() + ui.mapOff * 3600e3 : etaAt(P, rd, st, pt.km);
+    const v = seriesAt(pt, ts);
+    if (!v) { L.circleMarker([pt.lat, pt.lon], { radius: 4, color: '#26334f', weight: 1, fillColor: '#8b9ab8', fillOpacity: .5 }).bindTooltip('km ' + pt.km.toFixed(0) + (ts < Date.now() - 3600e3 ? ' · déjà passé' : ' · hors prévision') + ' (' + fmtDT(ts) + ')').addTo(wxLayer); continue; }
+    const wind = windInfo(v.ws, v.wd, pt.bearing), bc = wind.t === 'face' ? '#f87171' : wind.t === 'dos' ? '#34d399' : '#0b1220';
+    if (v.rain >= 0.1) L.circleMarker([pt.lat, pt.lon], { radius: Math.min(30, 12 + v.rain * 8), weight: 0, fillColor: '#3b82f6', fillOpacity: Math.min(.75, .25 + v.rain * .25), interactive: false }).addTo(wxLayer);
+    const html = '<div class="wc" style="background:' + tempColor(v.temp) + ';border-color:' + bc + '">' + arrowSvg((v.wd + 180) % 360) + '</div><div class="wt">' + Math.round(v.temp) + '° · ' + Math.round(v.ws) + '</div>';
+    L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: 'wmk', html, iconSize: [64, 48], iconAnchor: [32, 16] }) })
+      .bindPopup('<b>km ' + pt.km.toFixed(0) + '</b> · ' + fmtDT(ts) + '<br>' + WX(v.code) + ' ' + Math.round(v.temp) + ' °C<br>Pluie : ' + (v.rain > 0 ? v.rain.toFixed(1) + ' mm/h' : 'aucune') + '<br>Vent : ' + Math.round(v.ws) + ' km/h, ' + (wind.t === 'côté' ? 'de côté' : wind.t === 'face' ? 'de face ' + wind.v : 'dans le dos ' + wind.v)).addTo(wxLayer);
+  }
+}
+function setMapMsg(t) { ui.mapMsg = t; const e = $('#mapmsg'); if (e) e.textContent = t; }
+async function fetchMapWeather(force) {
+  if (!S || !S.track) return;
+  if (!navigator.onLine) { setMapMsg(S.mapWx ? 'Hors ligne : prévisions du ' + fmtDT(S.mapWx.at) + '.' : 'Hors ligne : pas de météo en cache.'); return; }
+  if (!force && S.mapWx && Date.now() - S.mapWx.at < 30 * 60e3) { setMapMsg('Météo mise à jour ' + ago(S.mapWx.at) + '.'); return; }
+  const ride = S, pts = samplePoints(ride.track);
+  setMapMsg('Chargement de la météo…');
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(p => p.lat.toFixed(3)).join(',') + '&longitude=' + pts.map(p => p.lon.toFixed(3)).join(',') +
+    '&hourly=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&wind_speed_unit=kmh&timeformat=unixtime&timezone=GMT&forecast_days=7';
+  try {
+    const r = await fetch(url); if (!r.ok) throw new Error(r.status);
+    let j = await r.json(); if (!Array.isArray(j)) j = [j];
+    const r1 = a => a.map(x => Math.round(x * 10) / 10);
+    ride.mapWx = { at: Date.now(), pts: pts.map((p, i) => { const H = j[i].hourly; return { km: p.km, lat: p.lat, lon: p.lon, bearing: p.bearing, t0: H.time[0], temp: r1(H.temperature_2m), rain: r1(H.precipitation), code: H.weather_code, ws: r1(H.wind_speed_10m), wd: H.wind_direction_10m.map(Math.round) }; }) };
+    save();
+    if (S === ride && ui.tab === 'map') { updateWxLayer(); setMapMsg('Météo mise à jour à l’instant.'); }
+  } catch (e) { if (S === ride) setMapMsg('Météo indisponible (réseau). ' + (ride.mapWx ? 'Dernières données conservées.' : '')); }
+}
+
+// ===== Plan =====
 function renderPlan() {
-  const P = curPlan();
-  let h = '<div class="card"><h2>Parcours</h2>';
-  h += S.track ? '<div><b>' + esc(S.track.name) + '</b></div><div class="sub">' + S.track.total.toFixed(0) + ' km · ' + S.track.n + ' points · D+ ≈ ' + Math.round(S.track.ascent) + ' m</div>' : '<div class="mut">Aucun GPX chargé</div>';
-  h += '<div style="margin-top:10px"><button class="g" data-act="gpx">📂 Importer un GPX</button></div></div>';
+  let h = '<div class="card"><h2>Circuit</h2><label>Nom</label><input id="rname" value="' + esc(S.name) + '">';
+  h += S.track ? '<div class="sub">' + esc(S.kind) + ' · ' + S.track.total.toFixed(0) + ' km · ' + S.track.n + ' points · D+ ≈ ' + Math.round(S.track.ascent) + ' m</div>' : '';
+  h += '<div class="row2" style="margin-top:10px"><button class="g" data-act="dup">Dupliquer</button><button class="g" data-act="delride" style="color:var(--bad)">Supprimer</button></div></div>';
   if (!S.track) return h;
-  const st = computeStatus(P, null, S.limitH, S.mode);
+  const P = curPlan(), st = computeStatus(P, null, S.limitH, S.mode);
+  const nom = brmNominal(S.track.total);
   h += '<div class="card"><h2>Départ & limite</h2><div class="row2"><div><label>Date et heure de départ</label><input type="datetime-local" id="dep" value="' + toInput(S.depMs) + '"></div>' +
-    '<div><label>Temps max (h)</label><input type="number" id="lim" value="' + S.limitH + '" inputmode="numeric"></div></div>' +
+    '<div><label>Temps max (h)</label><input type="number" id="lim" value="' + S.limitH + '" step="0.5" inputmode="decimal"></div></div>' +
+    '<div class="msg">Délai BRM pour ' + nom + ' km : ' + limLabel(brmLimitH(S.track.total)) + ' · PBP : 90h00. <a href="#" data-act="applybrm" style="color:var(--acc)">Appliquer le délai BRM</a></div>' +
     '<label>Projection de l’arrivée</label><select id="mode"><option value="plan"' + (S.mode === 'plan' ? ' selected' : '') + '>Plan prévu, décalé de mon écart</option><option value="real"' + (S.mode === 'real' ? ' selected' : '') + '>Au rythme réel constaté</option></select>' +
-    '<div class="grid" style="margin-top:12px"><div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - S.depMs) + '</b></div><div class="k"><span>Marge sur ' + S.limitH + ' h</span><b class="' + (st.plannedMargin < 0 ? 'bad' : 'ok') + '">' + (st.plannedMargin < 0 ? '−' : '+') + fmtDur(st.plannedMargin) + '</b></div></div>' +
+    '<div class="grid" style="margin-top:12px"><div class="k"><span>Durée prévue</span><b>' + fmtDur(st.plannedFinish - S.depMs) + '</b></div><div class="k"><span>Marge sur ' + limLabel(S.limitH) + '</span><b class="' + (st.plannedMargin < 0 ? 'bad' : 'ok') + '">' + (st.plannedMargin < 0 ? '−' : '+') + fmtDur(st.plannedMargin) + '</b></div></div>' +
     '<div class="msg">Arrivée prévue : ' + fmtDT(st.plannedFinish) + '</div></div>';
-  h += '<div class="card"><h2>Étapes</h2><table><tr><th>Contrôle</th><th>Km</th><th>km/h</th><th>Arrêt min</th></tr>' +
+  const last = S.controls.length - 1;
+  h += '<div class="card"><h2>Étapes</h2><table><tr><th>Contrôle</th><th>Km</th><th>km/h</th><th>Arrêt</th><th></th></tr>' +
     S.controls.map((c, i) => '<tr><td>' + esc(c.name) + (c.off > 1500 ? ' ⚠️' : '') + '</td>' +
-      '<td><input type="number" data-c="' + i + '" data-f="km" value="' + c.km + '" step="0.1" inputmode="decimal" style="width:64px"></td>' +
-      '<td><input type="number" data-c="' + i + '" data-f="speed" value="' + c.speed + '" step="0.5" inputmode="decimal" style="width:54px"></td>' +
-      '<td><input type="number" data-c="' + i + '" data-f="stop" value="' + c.stop + '" inputmode="numeric" style="width:58px"></td></tr>').join('') + '</table>' +
-    '<div class="msg">« km/h » = vitesse moyenne roulante pour rejoindre ce contrôle depuis le précédent. « Arrêt » : durée sur place, mets 90 min ou plus pour un sommeil 🌙. ⚠️ = position du contrôle à vérifier (éloignée de la trace).</div>' +
-    '<div style="margin-top:10px"><button class="g" data-act="reset-controls">Réinitialiser les étapes</button></div></div>';
+      '<td><input type="number" data-c="' + i + '" data-f="km" value="' + c.km + '" step="0.1" inputmode="decimal" style="width:62px"></td>' +
+      '<td><input type="number" data-c="' + i + '" data-f="speed" value="' + c.speed + '" step="0.5" inputmode="decimal" style="width:52px"></td>' +
+      '<td><input type="number" data-c="' + i + '" data-f="stop" value="' + c.stop + '" inputmode="numeric" style="width:52px"></td>' +
+      '<td>' + (i < last ? '<button class="x" data-rm="' + i + '">✕</button>' : '') + '</td></tr>').join('') + '</table>' +
+    '<div class="msg">« km/h » = vitesse moyenne roulante pour rejoindre ce contrôle depuis le précédent. « Arrêt » en minutes : 90 min ou plus = sommeil 🌙. ⚠️ = contrôle éloigné de la trace, à vérifier.</div>' +
+    '<label>Ajouter une étape</label><div class="row2"><input id="an" placeholder="Nom (ex. Contrôle 2)"><input id="ak" type="number" inputmode="decimal" placeholder="Km"></div>' +
+    '<div class="row2" style="margin-top:8px"><button class="g" data-act="addstage">＋ Ajouter</button><button class="g" data-act="reset-controls">Réinitialiser</button></div>' +
+    '<label>Même vitesse sur toutes les étapes (km/h)</label><div class="row2"><input id="gs" type="number" step="0.5" inputmode="decimal" value="' + S.speed + '"><button class="g" data-act="applyspeed">Appliquer</button></div></div>';
   return h;
 }
 function renderLog() {
   const L = S.log.slice().sort((a, b) => b.t - a.t);
   let h = '<div class="card"><h2>Positions enregistrées</h2>';
   h += L.length ? '<table><tr><th>Heure</th><th>Km</th><th>Source</th><th></th></tr>' + L.map(r => '<tr><td>' + fmtDT(r.t) + '</td><td class="num">' + r.km.toFixed(1) + '</td><td>' + esc(r.src) + '</td><td><button class="x" data-del="' + r.t + '">✕</button></td></tr>').join('') + '</table>' : '<div class="empty">Rien pour l’instant.</div>';
-  h += '</div><div class="card"><h2>Sauvegarde</h2><div class="row2"><button class="g" data-act="export">Exporter</button><button class="g" data-act="import">Importer</button></div>' +
-    '<div class="msg">' + (memOnly ? '⚠️ Stockage local indisponible : les données seront perdues à la fermeture.' : 'Les données restent sur ce téléphone (IndexedDB). L’export est une copie de sécurité.') + '</div></div>';
+  h += '</div><div class="card"><h2>Sauvegarde (tous les circuits)</h2><div class="row2"><button class="g" data-act="export">Exporter</button><button class="g" data-act="import">Importer</button></div>' +
+    '<div class="msg">' + (memOnly ? '⚠️ Stockage local indisponible : les données seront perdues à la fermeture.' : 'Les données restent sur ce téléphone. L’export est une copie de sécurité (traces GPX comprises).') + '</div></div>';
   return h;
 }
+
+// ===== Rendu général =====
+function renderHeader() {
+  $('#hdr').innerHTML = S
+    ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small>'
+    : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small>';
+}
 function render() {
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
-  $('#dock').style.display = (S.tab === 'dash' || S.tab === 'route') && S.track ? 'flex' : 'none';
+  if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; }
+  renderHeader();
+  $('#nav').style.display = S ? 'flex' : 'none';
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
+  $('#dock').style.display = S && S.track && (ui.tab === 'dash' || ui.tab === 'route') ? 'flex' : 'none';
   const y = window.scrollY;
-  $('#app').innerHTML = S.tab === 'dash' ? renderDash() : S.tab === 'route' ? renderRoute() : S.tab === 'plan' ? renderPlan() : renderLog();
+  $('#app').innerHTML = !S ? renderHome() : ui.tab === 'dash' ? renderDash() : ui.tab === 'route' ? renderRoute() : ui.tab === 'map' ? renderMap() : ui.tab === 'plan' ? renderPlan() : renderLog();
   window.scrollTo(0, y);
-  $('#clock').textContent = fmtDT(Date.now());
+  if (S && ui.tab === 'map') initMap();
 }
 
 // ===== Actions =====
-function addLog(km, t, src) {
-  S.log = S.log.filter(r => !(Math.abs(r.t - t) < 30000));
-  S.log.push({ t, km, src }); save();
-}
+function addLog(km, t, src) { S.log = S.log.filter(r => !(Math.abs(r.t - t) < 30000)); S.log.push({ t, km, src }); save(); }
 function updateGPS(silent) {
-  if (!S.track) return;
+  if (!S || !S.track) return;
+  const ride = S;
   if (!navigator.geolocation) { ui.msg = 'GPS indisponible sur cet appareil.'; render(); return; }
   if (!silent) { ui.msg = 'Recherche de position…'; render(); }
   navigator.geolocation.getCurrentPosition(pos => {
+    if (S !== ride) return;
     const T = S.track, now = Date.now(), lat = pos.coords.latitude, lon = pos.coords.longitude;
     const rd = lastReading();
     let s = rd ? snap(T, lat, lon, rd.km - 20, rd.km + 250) : snap(T, lat, lon, 0, null);
@@ -421,12 +617,13 @@ function updateGPS(silent) {
     else if (now < S.depMs - 30 * 60e3) { ui.msg = 'Avant le départ : position non enregistrée (km ' + s.km.toFixed(1) + ').'; }
     else { addLog(s.km, now, 'GPS'); ui.msg = ''; }
     render(); refreshWeather(false);
-  }, err => { ui.msg = 'GPS : ' + (err.code === 1 ? (window.isSecureContext ? 'autorisation refusée (vérifie les réglages de localisation du navigateur)' : 'bloqué car la page n’est pas en HTTPS : héberge l’app sur un site sécurisé') : err.code === 3 ? 'délai dépassé' : 'position indisponible'); render(); },
+  }, err => { if (S !== ride) return; ui.msg = 'GPS : ' + (err.code === 1 ? (window.isSecureContext ? 'autorisation refusée (vérifie les réglages de localisation)' : 'bloqué car la page n’est pas en HTTPS') : err.code === 3 ? 'délai dépassé' : 'position indisponible'); render(); },
   { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
 }
 async function refreshWeather(force) {
-  if (!S.track) return;
-  if (!navigator.onLine) { ui.wxMsg = 'Hors ligne : dernières prévisions affichées.'; render(); return; }
+  if (!S || !S.track) return;
+  const ride = S;
+  if (!navigator.onLine) { ui.wxMsg = 'Hors ligne : dernières prévisions affichées.'; if (ui.tab === 'dash') render(); return; }
   const P = curPlan(), rd = lastReading(), st = computeStatus(P, rd, S.limitH, S.mode);
   if (!force && S.weather && Date.now() - S.weather.at < 20 * 60e3 && S.weather.km === (rd ? Math.round(rd.km) : 0)) return;
   const tg = wxTargets(P, rd, st);
@@ -440,47 +637,99 @@ async function refreshWeather(force) {
       if (k < 0 || k >= H.time.length) return { label: x.label, ts: x.ts, na: true };
       return { label: x.label, ts: x.ts, code: H.weather_code[k], temp: H.temperature_2m[k], rain: H.precipitation[k], wind: windInfo(H.wind_speed_10m[k], H.wind_direction_10m[k], x.bearing) };
     });
-    S.weather = { at: Date.now(), km: rd ? Math.round(rd.km) : 0, items }; ui.wxMsg = ''; save();
+    ride.weather = { at: Date.now(), km: rd ? Math.round(rd.km) : 0, items }; ui.wxMsg = ''; save();
   } catch (e) { ui.wxMsg = 'Météo indisponible (réseau). Dernières données conservées.'; }
-  render();
+  if (S === ride && ui.tab === 'dash') render();
 }
-function resetControls() {
-  S.controls = defaultControls(S.track); save();
-}
-async function importGPX(file) {
-  const txt = await file.text(), g = parseGPX(txt);
+function resetControls() { S.controls = S.kind === 'PBP' ? defaultControls(S.track) : S.controls.slice(-1).map(c => Object.assign({}, c, { speed: S.speed })); save(); }
+async function createRide(file) {
+  const g = parseGPX(await file.text());
   if (g.pts.length < 2) { alert('GPX illisible : aucune trace trouvée.'); return; }
-  S.track = buildTrack(g.pts, g.name); resetControls(); S.weather = null; save(); render();
+  const T = buildTrack(g.pts, g.name);
+  const r = newRide((file.name || '').replace(/\.gpx$/i, '').replace(/[_]+/g, ' ').trim() || g.name);
+  r.track = T; r.speed = T.total <= 400 ? 25 : T.total <= 700 ? 23 : 22;
+  if (isPBP(T)) {
+    r.kind = 'PBP'; r.controls = defaultControls(T, 22, 20); r.limitH = 90; r.depMs = new Date(2027, 7, 15, 17, 0).getTime();
+  } else {
+    r.kind = T.total <= 1300 ? 'BRM ' + brmNominal(T.total) : 'Circuit'; r.limitH = T.total <= 1300 ? brmLimitH(T.total) : Math.ceil(T.total / 15);
+    const C = [];
+    if (g.wpts.length && g.wpts.length <= 15) {
+      for (const w of g.wpts) { const s = snap(T, w.lat, w.lon, null, null); if (s.d <= 1500 && s.km > 1 && s.km < T.total - 1) C.push({ name: w.name, km: Math.round(s.km * 10) / 10, speed: r.speed, stop: 10, off: Math.round(s.d) }); }
+      C.sort((a, b) => a.km - b.km);
+    }
+    r.controls = C.filter((c, i) => !i || c.km - C[i - 1].km > 0.5);
+    r.controls.push({ name: 'Arrivée', km: Math.round(T.total * 10) / 10, speed: r.speed, stop: 0, off: 0 });
+  }
+  G.rides.push(r); save(); openRide(r.id);
 }
+function openRide(id) {
+  const r = G.rides.find(x => x.id === id); if (!r) return;
+  S = r; G.cur = id; ui = Object.assign(ui, { tab: 'dash', manual: false, msg: '', wxMsg: '', mapMsg: '', mapView: null, mapOff: 0, mapMode: 'pass' });
+  save(); try { history.pushState({ r: 1 }, ''); } catch (e) {}
+  render();
+  if (S.track) { updateGPS(true); refreshWeather(false); }
+}
+function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render(); }
 
 document.addEventListener('click', e => {
-  const tab = e.target.closest('[data-tab]'); if (tab) { S.tab = tab.dataset.tab; save(); render(); return; }
+  const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
+  const op = e.target.closest('[data-open]'); if (op) { openRide(op.dataset.open); return; }
   const del = e.target.closest('[data-del]'); if (del) { S.log = S.log.filter(r => r.t !== +del.dataset.del); save(); render(); return; }
+  const rm = e.target.closest('[data-rm]'); if (rm) { S.controls.splice(+rm.dataset.rm, 1); S.weather = null; save(); render(); return; }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act;
-  if (act === 'gps') updateGPS(false);
-  else if (act === 'manual') { ui.manual = true; render(); document.getElementById('mc') && document.getElementById('mc').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  if (a.tagName === 'A') e.preventDefault();
+  if (act === 'new') $('#gpxfile').click();
+  else if (act === 'home') { if (history.state && history.state.r) history.back(); else goHome(); }
+  else if (act === 'gps') updateGPS(false);
+  else if (act === 'manual') { ui.manual = true; render(); const m = document.getElementById('mc'); m && m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   else if (act === 'manual-cancel') { ui.manual = false; render(); }
   else if (act === 'manual-ok') {
     const c = S.controls[+$('#mc').value], t = new Date($('#mt').value).getTime(), kv = parseFloat($('#mk').value);
     if (isNaN(t)) return;
     addLog(isNaN(kv) ? c.km : Math.min(S.track.total, Math.max(0, kv)), t, 'manuel'); ui.manual = false; render();
   }
-  else if (act === 'gpx') $('#gpxfile').click();
-  else if (act === 'reset-controls') { if (confirm('Réinitialiser toutes les étapes ?')) { resetControls(); render(); } }
+  else if (act === 'reset-controls') { if (confirm('Réinitialiser les étapes ?')) { resetControls(); render(); } }
+  else if (act === 'addstage') {
+    const n = $('#an').value.trim(), k = parseFloat($('#ak').value);
+    if (!n || isNaN(k) || k <= 0 || k >= S.track.total) { alert('Indique un nom et un kilomètre entre 0 et ' + S.track.total.toFixed(0) + '.'); return; }
+    S.controls.push({ name: n, km: k, speed: S.speed, stop: 10, off: 0 }); S.controls.sort((x, y) => x.km - y.km); S.weather = null; save(); render();
+  }
+  else if (act === 'applyspeed') { const v = parseFloat($('#gs').value); if (v > 0) { S.speed = v; S.controls.forEach(c => c.speed = v); save(); render(); } }
+  else if (act === 'applybrm') { S.limitH = brmLimitH(S.track.total); save(); render(); }
+  else if (act === 'dup') {
+    const c = structuredClone(S); c.id = 'r' + Date.now().toString(36); c.name = S.name + ' (copie)'; c.log = []; c.weather = null; c.mapWx = null;
+    G.rides.push(c); save(); openRide(c.id);
+  }
+  else if (act === 'delride') { if (confirm('Supprimer « ' + S.name + ' » et toutes ses positions ?')) { G.rides = G.rides.filter(r => r !== S); goHome(); } }
+  else if (act === 'mapmode-pass') { ui.mapMode = 'pass'; render(); }
+  else if (act === 'mapmode-hour') { ui.mapMode = 'hour'; render(); }
+  else if (act === 'maprefresh') fetchMapWeather(true);
+  else if (act === 'mapfit-all') { if (mapObj && mapAll) mapObj.fitBounds(mapAll); }
+  else if (act === 'mapfit-me') { if (lastReading()) fitAhead(); else setMapMsg('Aucune position enregistrée : touche « Position GPS » dans l’onglet Accueil.'); }
   else if (act === 'export') {
-    const blob = new Blob([JSON.stringify({ depMs: S.depMs, limitH: S.limitH, mode: S.mode, controls: S.controls, log: S.log })], { type: 'application/json' });
-    const u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = 'mypbp-sauvegarde.json'; l.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+    const blob = new Blob([JSON.stringify(G)], { type: 'application/json' });
+    const u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = 'mybikeplanner-sauvegarde.json'; l.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
   }
   else if (act === 'import') $('#jsonfile').click();
 });
+document.addEventListener('input', e => {
+  if (e.target.id === 'wxs') { ui.mapOff = +e.target.value; const l = $('#wxl'); if (l) l.textContent = wxLabel(); updateWxLayer(); }
+});
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.id === 'gpxfile' && t.files[0]) importGPX(t.files[0]);
-  else if (t.id === 'jsonfile' && t.files[0]) t.files[0].text().then(x => { try { const j = JSON.parse(x); Object.assign(S, { depMs: j.depMs, limitH: j.limitH, mode: j.mode, controls: j.controls, log: j.log }); save(); render(); } catch (er) { alert('Fichier invalide.'); } });
-  else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; save(); render(); } }
+  if (t.id === 'gpxfile' && t.files[0]) { createRide(t.files[0]); t.value = ''; }
+  else if (t.id === 'jsonfile' && t.files[0]) t.files[0].text().then(x => {
+    try {
+      const j = JSON.parse(x);
+      if (j.v === 2 && Array.isArray(j.rides)) { G = j; S = null; G.cur = null; save(); render(); } else alert('Fichier de sauvegarde non reconnu.');
+    } catch (er) { alert('Fichier invalide.'); }
+  });
+  else if (t.id === 'rname') { S.name = t.value.trim() || S.name; save(); renderHeader(); }
+  else if (t.id === 'dep') { const v = new Date(t.value).getTime(); if (!isNaN(v)) { S.depMs = v; S.mapWx = null; save(); render(); } }
   else if (t.id === 'lim') { S.limitH = Math.max(1, +t.value || 90); save(); render(); }
   else if (t.id === 'mode') { S.mode = t.value; save(); render(); }
+  else if (t.id === 'tiles') { ui.tiles = t.checked; render(); }
   else if (t.dataset && t.dataset.c != null) {
     const c = S.controls[+t.dataset.c], v = parseFloat(t.value); if (isNaN(v)) return;
     c[t.dataset.f] = v; c.off = 0;
@@ -488,13 +737,14 @@ document.addEventListener('change', e => {
     S.weather = null; save(); render();
   }
 });
+window.addEventListener('popstate', () => { if (S) goHome(); });
 
 (async function init() {
   await load(); render();
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor) navigator.serviceWorker.register('sw.js'); } catch (e) {}
-  if (S.track) { updateGPS(true); refreshWeather(false); }
-  setInterval(() => { if (!document.hidden && !ui.manual && (S.tab === 'dash' || S.tab === 'route')) render(); }, 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.track) { updateGPS(true); refreshWeather(false); } });
+  if (S) { try { history.pushState({ r: 1 }, ''); } catch (e) {} if (S.track) { updateGPS(true); refreshWeather(false); } }
+  setInterval(() => { if (!document.hidden && !ui.manual && (!S || ui.tab === 'dash' || ui.tab === 'route')) render(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S && S.track) { updateGPS(true); refreshWeather(false); } });
 })();
 </script>
 </body>
