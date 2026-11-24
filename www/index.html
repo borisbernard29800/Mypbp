@@ -424,6 +424,7 @@ const TR = [
   ['» et toutes ses positions ?', '» and all its positions?', '» y todas sus posiciones?', '» und alle Positionen?'],
   ['Réinitialiser les étapes ?', 'Reset the stages?', '¿Restablecer las etapas?', 'Etappen zurücksetzen?'],
   ['Indique un nom et un kilomètre entre 0 et', 'Enter a name and a kilometre between 0 and', 'Indica un nombre y un kilómetro entre 0 y', 'Gib einen Namen und einen Kilometer zwischen 0 und'],
+  ['Indique la date et l’heure de passage.', 'Enter the passage date and time.', 'Indica la fecha y hora de paso.', 'Gib Datum und Uhrzeit der Durchfahrt an.'],
   ['Indique une date de départ.', 'Enter a start date.', 'Indica una fecha de salida.', 'Gib ein Startdatum an.'],
   ['GPX illisible : aucune trace trouvée.', 'Unreadable GPX: no track found.', 'GPX ilegible: no se encontró ningún track.', 'GPX nicht lesbar: keine Strecke gefunden.'],
   ['Fichier invalide.', 'Invalid file.', 'Archivo no válido.', 'Ungültige Datei.'],
@@ -957,11 +958,11 @@ function renderWeather() {
 }
 function renderManual() {
   if (!ui.manual) return '';
-  const opts = S.controls.map((c, i) => '<option value="' + i + '">' + esc(c.name) + ' — km ' + c.km.toFixed(0) + '</option>').join('');
+  const mf = ui.mf || {}, opts = S.controls.map((c, i) => '<option value="' + i + '"' + (+mf.c === i ? ' selected' : '') + '>' + esc(c.name) + ' — km ' + c.km.toFixed(0) + '</option>').join('');
   return '<div class="card"><h2>Saisir un passage</h2>' +
     '<label>Contrôle</label><select id="mc">' + opts + '</select>' +
-    '<label>Heure de passage</label><input type="datetime-local" id="mt" value="' + toInput(Date.now()) + '">' +
-    '<label>ou kilomètre précis (facultatif)</label><input type="number" id="mk" inputmode="decimal" placeholder="ex. 112" value="' + (ui.pendKm != null ? ui.pendKm.toFixed(1) : '') + '">' +
+    '<label>Heure de passage</label><input type="datetime-local" id="mt" value="' + (mf.t || toInput(Date.now())) + '">' +
+    '<label>ou kilomètre précis (facultatif)</label><input type="number" id="mk" inputmode="decimal" placeholder="ex. 112" value="' + (mf.k != null ? mf.k : ui.pendKm != null ? ui.pendKm.toFixed(1) : '') + '">' +
     '<div class="row2" style="margin-top:10px"><button class="b" data-act="manual-ok">Enregistrer</button><button class="g" data-act="manual-cancel">Annuler</button></div></div>';
 }
 
@@ -1569,12 +1570,12 @@ document.addEventListener('click', e => {
   }
   else if (act === 'home') { if (history.state && history.state.r) history.back(); else goHome(); }
   else if (act === 'gps') updateGPS(false);
-  else if (act === 'manual') { ui.manual = true; render(); const m = document.getElementById('mc'); m && m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-  else if (act === 'manual-cancel') { ui.manual = false; ui.pendKm = null; render(); }
+  else if (act === 'manual') { ui.manual = true; ui.mf = null; render(); const m = document.getElementById('mc'); m && m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  else if (act === 'manual-cancel') { ui.manual = false; ui.pendKm = null; ui.mf = null; render(); }
   else if (act === 'manual-ok') {
     const c = S.controls[+$('#mc').value], t = new Date($('#mt').value).getTime(), kv = parseFloat($('#mk').value);
-    if (isNaN(t)) return;
-    addLog(isNaN(kv) ? c.km : Math.min(S.track.total, Math.max(0, kv)), t, 'manuel'); ui.manual = false; ui.pendKm = null; render();
+    if (isNaN(t)) { alert('Indique la date et l’heure de passage.'); return; }
+    addLog(isNaN(kv) ? c.km : Math.min(S.track.total, Math.max(0, kv)), t, 'manuel'); ui.manual = false; ui.pendKm = null; ui.mf = null; render();
   }
   else if (act === 'reset-controls') { if (confirm('Réinitialiser les étapes ?')) { resetControls(); render(); } }
   else if (act === 'addstage') {
@@ -1601,6 +1602,8 @@ document.addEventListener('focusin', e => { const t = e.target; if (t.dataset &&
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#psvg')) { stopPlay(); profPointer(e); window._pd = true; } });
 document.addEventListener('pointermove', e => { if (window._pd) profPointer(e); });
 document.addEventListener('pointerup', () => { window._pd = false; });
+const _mfSave = e => { if (e.target.id === 'mc' || e.target.id === 'mt' || e.target.id === 'mk') ui.mf = { c: $('#mc').value, t: $('#mt').value, k: $('#mk').value }; };
+document.addEventListener('input', _mfSave); document.addEventListener('change', _mfSave);
 document.addEventListener('input', e => {
   if (e.target.id === 'pslide') { ui.cur = +e.target.value; stopPlay(); moveCursor(true); return; }
   if (e.target.id === 'wxs') { ui.mapOff = +e.target.value; const l = $('#wxl'); if (l) l.textContent = wxLabel(); refreshWx(); }
