@@ -11,6 +11,7 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 - **Agenda** : calendrier des sorties, planification par date avec nouveau GPX ou copie d'un circuit existant.
 - **Plan** : date/heure de départ, étapes (noms modifiables, effaçables d'un geste) (km, vitesse moyenne, arrêt/sommeil), limite, tolérance GPS, projection « plan décalé » ou « rythme réel ».
 - **Suivi** : position GPS à l'ouverture (pas d'arrière-plan, batterie préservée) ou saisie manuelle des passages ; avance/retard, marge, vitesse mini, prochains passages.
+- **Distance jusqu'à la prochaine étape** : affichée dans Plan (+ X km depuis la précédente), Accueil (« dans X km ») et mode course (étape suivante et liste).
 - **Route** : feuille de route prévu / réel / écart.
 - **Noter un passage depuis la carte** : toucher le tracé puis « Noter un passage ici » (km prérempli).
 - **Carte météo** (style Epic Ride Weather) : flèches de vent le long du tracé (face/dos/côté), trajet coloré par température, halo de pluie, courbes (température et ressentie, précipitations et nuages, vent et rafales, altitude), météo à l'heure de passage ou à heure fixe, prévisions sur 7 jours.
