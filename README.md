@@ -17,7 +17,9 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 - **Profil d'altitude** sous la carte : pente en couleur, position, étapes ; curseur et lecture ▶ du parcours (la carte suit), avec heure de passage, pente et D+ restant.
 - **Mode course** : affichage épuré (Course / Étapes / Météo / Pointage), gros chiffres, un seul bouton.
 - **Réglages (⚙)** : thème Automatique (soleil) / Téléphone / Jour / Nuit ; **Sauvegarde** : export (partage Android) et import (fusion) de tous les circuits.
-- **Aide (?)** : manuel intégré à l'app.
+- **Couleur du trajet** : Pente (par défaut : bleu descente, vert < 3 %, jaune 3–6 %, orange 6–9 %, rouge > 9 %) ou Température.
+- **Multilingue** : français, English, Español, Deutsch ; choix au premier lancement (app vierge) puis dans ⚙ Réglages → Langue. Traduction à l'exécution : dictionnaire `TR` + règles `RX` + aide `HELP` dans `index.html` (textes sources en français).
+- **Aide (?)** : manuel intégré à l'app (4 langues).
 
 ## Structure
 - `www/index.html` : toute l'application (HTML/JS/CSS). Le bloc `// ==CORE==` … `// ==/CORE==` contient la logique pure (testable sous Node).
@@ -36,4 +38,4 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 - Désinstaller l'app efface les données : exporter avant.
 
 ## Règle de maintenance
-Toute évolution de fonction doit être reportée dans : l'aide intégrée (`renderHelp` dans `index.html`), ce README.
+Toute évolution de fonction doit être reportée dans : l'aide intégrée (`HELP` / `renderHelp` dans `index.html`, dans les 4 langues), les **traductions** (tout nouveau texte français doit avoir son entrée dans `TR`/`RX` pour EN/ES/DE), ce README.

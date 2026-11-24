@@ -341,6 +341,443 @@ function windInfo(speed, from, bearing) {
   return c >= 5 ? { t: 'face', v: Math.round(c) } : c <= -5 ? { t: 'dos', v: Math.round(-c) } : { t: 'côté', v: Math.round(speed) };
 }
 // ==/CORE==
+// ===== I18N : dictionnaire FR → EN / ES / DE (phrases les plus longues d’abord à l’application) =====
+const TR = [
+  // — navigation / en-têtes
+  ['Accueil', 'Home', 'Inicio', 'Start'],
+  ['Route', 'Route', 'Ruta', 'Route'],
+  ['Carte', 'Map', 'Mapa', 'Karte'],
+  ['Plan', 'Plan', 'Plan', 'Plan'],
+  ['Journal', 'Log', 'Registro', 'Protokoll'],
+  ['Circuits', 'Rides', 'Recorridos', 'Touren'],
+  ['Agenda', 'Calendar', 'Agenda', 'Kalender'],
+  ['Réglages', 'Settings', 'Ajustes', 'Einstellungen'],
+  ['Aide', 'Help', 'Ayuda', 'Hilfe'],
+  ['‹ Retour', '‹ Back', '‹ Volver', '‹ Zurück'],
+  ['＋ Nouveau circuit (importer un GPX)', '＋ New ride (import a GPX)', '＋ Nuevo recorrido (importar un GPX)', '＋ Neue Tour (GPX importieren)'],
+  ['Aucun circuit pour l’instant.', 'No ride yet.', 'Ningún recorrido por ahora.', 'Noch keine Tour.'],
+  ['Importe un fichier GPX (PBP, BRM, sortie…) pour commencer.', 'Import a GPX file (PBP, BRM, ride…) to get started.', 'Importa un archivo GPX (PBP, BRM, salida…) para empezar.', 'Importiere eine GPX-Datei (PBP, BRM, Tour …), um zu beginnen.'],
+  ['📍 Position GPS', '📍 GPS position', '📍 Posición GPS', '📍 GPS-Position'],
+  ['✏️ Saisir un passage', '✏️ Enter a passage', '✏️ Anotar un paso', '✏️ Durchfahrt eintragen'],
+  ['Supprimer', 'Delete', 'Eliminar', 'Löschen'],
+  ['Dupliquer', 'Duplicate', 'Duplicar', 'Duplizieren'],
+  ['Appliquer', 'Apply', 'Aplicar', 'Anwenden'],
+  ['Réinitialiser', 'Reset', 'Restablecer', 'Zurücksetzen'],
+  ['Valider', 'Confirm', 'Validar', 'Bestätigen'],
+  ['Annuler', 'Cancel', 'Cancelar', 'Abbrechen'],
+  ['Enregistrer', 'Save', 'Guardar', 'Speichern'],
+  ['Exporter', 'Export', 'Exportar', 'Exportieren'],
+  ['Importer', 'Import', 'Importar', 'Importieren'],
+  ['Planifier', 'Schedule', 'Planificar', 'Planen'],
+  ['Planifier une sortie', 'Plan a ride', 'Planificar una salida', 'Tour planen'],
+  ['Nouveau GPX…', 'New GPX…', 'Nuevo GPX…', 'Neue GPX …'],
+  ['Copie de', 'Copy of', 'Copia de', 'Kopie von'],
+  ['Type', 'Type', 'Tipo', 'Typ'],
+  ['Sorties à venir', 'Upcoming rides', 'Próximas salidas', 'Kommende Touren'],
+  ['Aucune sortie.', 'No rides.', 'Ninguna salida.', 'Keine Touren.'],
+  ['tout voir', 'show all', 'ver todo', 'alle anzeigen'],
+  ['Départ passé · aucune position', 'Start passed · no position', 'Salida pasada · sin posición', 'Start vorbei · keine Position'],
+  // — mois / agenda
+  ['BRM', 'BRM', 'BRM', 'BRM'],
+  ['PBP', 'PBP', 'PBP', 'PBP'],
+  ['Sortie libre', 'Free ride', 'Salida libre', 'Freie Tour'],
+  ['Sortie', 'Ride', 'Salida', 'Tour'],
+  ['Paris-Brest-Paris (90 h)', 'Paris-Brest-Paris (90 h)', 'Paris-Brest-Paris (90 h)', 'Paris-Brest-Paris (90 h)'],
+  ['BRM (délai selon la distance)', 'BRM (time limit by distance)', 'BRM (plazo según la distancia)', 'BRM (Zeitlimit nach Distanz)'],
+  ['Paris-Brest-Paris', 'Paris-Brest-Paris', 'Paris-Brest-Paris', 'Paris-Brest-Paris'],
+  ['points', 'points', 'puntos', 'Punkte'],
+  // — onglet Plan
+  ['Circuit', 'Ride', 'Recorrido', 'Tour'],
+  ['Nom', 'Name', 'Nombre', 'Name'],
+  ['Type de sortie', 'Ride type', 'Tipo de salida', 'Tourentyp'],
+  ['Départ & limite', 'Start & limit', 'Salida y límite', 'Start & Limit'],
+  ['Départ', 'Start', 'Salida', 'Start'],
+  ['Date et heure de départ', 'Start date and time', 'Fecha y hora de salida', 'Startdatum und -zeit'],
+  ['Limite horaire', 'Time limit', 'Límite horario', 'Zeitlimit'],
+  ['Sans limite : l’app affiche la durée prévue et ton avance ou retard, sans marge ni vitesse minimale.', 'No limit: the app shows the planned duration and your lead or delay, with no margin or minimum speed.', 'Sin límite: la app muestra la duración prevista y tu adelanto o retraso, sin margen ni velocidad mínima.', 'Ohne Limit: Die App zeigt die geplante Dauer und deinen Vorsprung bzw. Rückstand, ohne Reserve und Mindestgeschwindigkeit.'],
+  ['Tolérance GPS (km)', 'GPS tolerance (km)', 'Tolerancia GPS (km)', 'GPS-Toleranz (km)'],
+  ['Distance maximale entre ta position et la trace pour l’enregistrer.', 'Maximum distance between your position and the track for it to be recorded.', 'Distancia máxima entre tu posición y el track para registrarla.', 'Maximale Entfernung zwischen deiner Position und der Strecke, damit sie gespeichert wird.'],
+  ['Projection de l’arrivée', 'Finish projection', 'Proyección de la llegada', 'Ankunftsprognose'],
+  ['Plan prévu, décalé de mon écart', 'Planned schedule, shifted by my gap', 'Plan previsto, desplazado por mi desfase', 'Geplanter Ablauf, um meine Abweichung verschoben'],
+  ['Au rythme réel constaté', 'At my actual pace', 'Al ritmo real observado', 'Mit meinem tatsächlichen Tempo'],
+  ['Durée prévue', 'Planned duration', 'Duración prevista', 'Geplante Dauer'],
+  ['Arrivée prévue :', 'Planned arrival:', 'Llegada prevista:', 'Geplante Ankunft:'],
+  ['Temps max (h)', 'Max time (h)', 'Tiempo máx. (h)', 'Max. Zeit (h)'],
+  ['Délai BRM pour', 'BRM time limit for', 'Plazo BRM para', 'BRM-Zeitlimit für'],
+  ['Appliquer le délai BRM', 'Apply the BRM time limit', 'Aplicar el plazo BRM', 'BRM-Zeitlimit anwenden'],
+  ['Marge sur les', 'Margin on the', 'Margen sobre las', 'Reserve auf die'],
+  ['Marge sur', 'Margin on', 'Margen sobre', 'Reserve auf'],
+  ['Étapes', 'Stages', 'Etapas', 'Etappen'],
+  ['Étape', 'Stage', 'Etapa', 'Etappe'],
+  ['Contrôle', 'Control', 'Control', 'Kontrolle'],
+  ['Km', 'Km', 'Km', 'Km'],
+  ['Arrêt', 'Stop', 'Parada', 'Halt'],
+  ['« km/h » = vitesse moyenne roulante pour rejoindre ce contrôle depuis le précédent. « Arrêt » en minutes : 90 min ou plus = sommeil 🌙. ⚠️ = contrôle éloigné de la trace, à vérifier.', '“km/h” = average moving speed to reach this control from the previous one. “Stop” in minutes: 90 min or more = sleep 🌙. ⚠️ = control far from the track, to check.', '«km/h» = velocidad media en marcha para llegar a este control desde el anterior. «Parada» en minutos: 90 min o más = sueño 🌙. ⚠️ = control alejado del track, a verificar.', '„km/h“ = Durchschnittsgeschwindigkeit in Fahrt bis zu dieser Kontrolle ab der vorherigen. „Halt“ in Minuten: ab 90 min = Schlaf 🌙. ⚠️ = Kontrolle weit von der Strecke entfernt, bitte prüfen.'],
+  ['Ajouter une étape', 'Add a stage', 'Añadir una etapa', 'Etappe hinzufügen'],
+  ['＋ Ajouter', '＋ Add', '＋ Añadir', '＋ Hinzufügen'],
+  ['Même vitesse sur toutes les étapes (km/h)', 'Same speed on all stages (km/h)', 'Misma velocidad en todas las etapas (km/h)', 'Gleiche Geschwindigkeit auf allen Etappen (km/h)'],
+  ['Nom de l’étape', 'Stage name', 'Nombre de la etapa', 'Etappenname'],
+  ['Effacer le nom', 'Clear the name', 'Borrar el nombre', 'Namen löschen'],
+  ['Nom (ex. Contrôle 2)', 'Name (e.g. Control 2)', 'Nombre (p. ej. Control 2)', 'Name (z. B. Kontrolle 2)'],
+  ['ex. 112', 'e.g. 112', 'p. ej. 112', 'z. B. 112'],
+  ['Supprimer «', 'Delete «', 'Eliminar «', 'Löschen «'],
+  ['» et toutes ses positions ?', '» and all its positions?', '» y todas sus posiciones?', '» und alle Positionen?'],
+  ['Réinitialiser les étapes ?', 'Reset the stages?', '¿Restablecer las etapas?', 'Etappen zurücksetzen?'],
+  ['Indique un nom et un kilomètre entre 0 et', 'Enter a name and a kilometre between 0 and', 'Indica un nombre y un kilómetro entre 0 y', 'Gib einen Namen und einen Kilometer zwischen 0 und'],
+  ['Indique une date de départ.', 'Enter a start date.', 'Indica una fecha de salida.', 'Gib ein Startdatum an.'],
+  ['GPX illisible : aucune trace trouvée.', 'Unreadable GPX: no track found.', 'GPX ilegible: no se encontró ningún track.', 'GPX nicht lesbar: keine Strecke gefunden.'],
+  ['Fichier invalide.', 'Invalid file.', 'Archivo no válido.', 'Ungültige Datei.'],
+  ['Fichier de sauvegarde non reconnu.', 'Backup file not recognised.', 'Archivo de copia no reconocido.', 'Sicherungsdatei nicht erkannt.'],
+  ['Export impossible :', 'Export failed:', 'No se pudo exportar:', 'Export nicht möglich:'],
+  ['Sauvegarde MyBikePlanner', 'MyBikePlanner backup', 'Copia de MyBikePlanner', 'MyBikePlanner-Sicherung'],
+  ['Enregistrer ou envoyer la sauvegarde', 'Save or send the backup', 'Guardar o enviar la copia', 'Sicherung speichern oder senden'],
+  ['Ce circuit n’a pas de tracé.', 'This ride has no track.', 'Este recorrido no tiene track.', 'Diese Tour hat keine Strecke.'],
+  ['⚠️ Stockage local indisponible : les données seront perdues à la fermeture.', '⚠️ Local storage unavailable: data will be lost on close.', '⚠️ Almacenamiento local no disponible: los datos se perderán al cerrar.', '⚠️ Lokaler Speicher nicht verfügbar: Die Daten gehen beim Schließen verloren.'],
+  // — tableau de bord
+  ['🏁 Mode course (affichage épuré)', '🏁 Race mode (clean display)', '🏁 Modo carrera (pantalla simplificada)', '🏁 Rennmodus (reduzierte Anzeige)'],
+  ['En course · km', 'Riding · km', 'En ruta · km', 'Unterwegs · km'],
+  ['En course', 'Riding', 'En ruta', 'Unterwegs'],
+  ['Terminé ·', 'Finished ·', 'Terminado ·', 'Beendet ·'],
+  ['Arrivée !', 'Finished!', '¡Llegada!', 'Ziel erreicht!'],
+  ['Départ dans', 'Starts in', 'Sale en', 'Start in'],
+  ['temps max', 'max time', 'tiempo máx.', 'max. Zeit'],
+  ['aucune position enregistrée', 'no position recorded', 'ninguna posición registrada', 'keine Position gespeichert'],
+  ['Position à', 'Position', 'Posición a', 'Position'],
+  ['Course vs limite', 'Ride vs limit', 'Carrera vs límite', 'Fahrt vs Limit'],
+  ['Temps écoulé', 'Elapsed time', 'Tiempo transcurrido', 'Verstrichene Zeit'],
+  ['▮ fin prévue', '▮ planned finish', '▮ fin prevista', '▮ geplantes Ende'],
+  ['départ', 'start', 'salida', 'Start'],
+  ['Distance réalisée', 'Distance covered', 'Distancia recorrida', 'Zurückgelegte Strecke'],
+  ['réalisé', 'done', 'realizado', 'erledigt'],
+  ['où je devrais être', 'where I should be', 'dónde debería estar', 'wo ich sein sollte'],
+  ['Arrivée projetée', 'Projected arrival', 'Llegada proyectada', 'Prognostizierte Ankunft'],
+  ['Reste', 'Remaining', 'Resta', 'Verbleibend'],
+  ['Vitesse mini pour tenir', 'Min. speed to hold', 'Velocidad mín. para cumplir', 'Mindesttempo für'],
+  ['Vitesse prévue', 'Planned speed', 'Velocidad prevista', 'Geplantes Tempo'],
+  ['Prochain contrôle', 'Next control', 'Próximo control', 'Nächste Kontrolle'],
+  ['Prochains passages (prévu)', 'Next passages (planned)', 'Próximos pasos (previsto)', 'Nächste Durchfahrten (geplant)'],
+  ['Heure', 'Time', 'Hora', 'Zeit'],
+  ['Arrivée', 'Finish', 'Llegada', 'Ziel'],
+  ['Ma position', 'My position', 'Mi posición', 'Meine Position'],
+  ['dans le plan', 'on schedule', 'según el plan', 'im Plan'],
+  ['d’avance', 'ahead', 'de adelanto', 'Vorsprung'],
+  ['de retard', 'behind', 'de retraso', 'Rückstand'],
+  ['dans', 'in', 'en', 'in'],
+  ['de côté', 'crosswind', 'viento lateral', 'Seitenwind'],
+  ['de face', 'headwind', 'viento de frente', 'Gegenwind'],
+  ['dans le dos', 'tailwind', 'viento de cola', 'Rückenwind'],
+  ['aucune', 'none', 'ninguna', 'keiner'],
+  ['sec', 'dry', 'seco', 'trocken'],
+  ['vent', 'wind', 'viento', 'Wind'],
+  ['dernière', 'last', 'última', 'letzte'],
+  ['Actualiser', 'Refresh', 'Actualizar', 'Aktualisieren'],
+  ['↻ Actualiser', '↻ Refresh', '↻ Actualizar', '↻ Aktualisieren'],
+  ['Saisir un passage', 'Enter a passage', 'Anotar un paso', 'Durchfahrt eintragen'],
+  ['ou kilomètre précis (facultatif)', 'or exact kilometre (optional)', 'o kilómetro exacto (opcional)', 'oder genauer Kilometer (optional)'],
+  ['Source', 'Source', 'Fuente', 'Quelle'],
+  ['Fermer', 'Close', 'Cerrar', 'Schließen'],
+  ['dernières', 'latest', 'últimas', 'letzten'],
+  ['limite', 'limit', 'límite', 'Limit'],
+  ['maintenant', 'now', 'ahora', 'jetzt'],
+  ['il y a', 'ago', 'hace', 'vor'],
+  ['à l’instant', 'just now', 'ahora mismo', 'gerade eben'],
+  ['Dernière position', 'Last position', 'Última posición', 'Letzte Position'],
+  ['Position GPS', 'GPS position', 'Posición GPS', 'GPS-Position'],
+  ['Arrivé', 'Finished', 'Llegado', 'Angekommen'],
+  // — messages GPS
+  ['Recherche de position…', 'Looking for your position…', 'Buscando tu posición…', 'Position wird gesucht …'],
+  ['GPS indisponible sur cet appareil.', 'GPS unavailable on this device.', 'GPS no disponible en este dispositivo.', 'GPS auf diesem Gerät nicht verfügbar.'],
+  ['non enregistrée', 'not recorded', 'no registrada', 'nicht gespeichert'],
+  ['tolérance', 'tolerance', 'tolerancia', 'Toleranz'],
+  ['réglable dans Plan', 'adjustable in Plan', 'ajustable en Plan', 'in Plan einstellbar'],
+  ['du parcours', 'from the route', 'del recorrido', 'von der Strecke'],
+  ['Avant le départ : position non enregistrée', 'Before the start: position not recorded', 'Antes de la salida: posición no registrada', 'Vor dem Start: Position nicht gespeichert'],
+  ['autorisation refusée (vérifie les réglages de localisation)', 'permission denied (check the location settings)', 'permiso denegado (revisa los ajustes de ubicación)', 'Berechtigung verweigert (Standorteinstellungen prüfen)'],
+  ['bloqué car la page n’est pas en HTTPS', 'blocked because the page is not HTTPS', 'bloqueado porque la página no es HTTPS', 'blockiert, da die Seite nicht über HTTPS läuft'],
+  ['délai dépassé', 'timed out', 'tiempo agotado', 'Zeitüberschreitung'],
+  ['position indisponible', 'position unavailable', 'posición no disponible', 'Position nicht verfügbar'],
+  ['touche 📍 pour te localiser', 'tap 📍 to locate yourself', 'toca 📍 para localizarte', 'tippe auf 📍, um dich zu orten'],
+  // — météo (tableau)
+  ['Météo sur le parcours', 'Weather along the route', 'Tiempo en el recorrido', 'Wetter entlang der Strecke'],
+  ['Pas encore de données. Touche « Position GPS » (réseau requis).', 'No data yet. Tap “GPS position” (network required).', 'Aún no hay datos. Toca «Posición GPS» (requiere red).', 'Noch keine Daten. Tippe auf „GPS-Position“ (Netzwerk erforderlich).'],
+  ['Lieu', 'Place', 'Lugar', 'Ort'],
+  ['Vent', 'Wind', 'Viento', 'Wind'],
+  ['hors prévision', 'out of forecast', 'fuera de previsión', 'außerhalb der Prognose'],
+  ['face', 'head', 'frente', 'gegen'],
+  ['dos', 'tail', 'cola', 'Rücken'],
+  ['côté', 'side', 'lado', 'seitlich'],
+  ['Mis à jour à l’instant · prévisions aux heures de passage estimées · voir l’onglet Carte', 'Updated just now · forecasts at the estimated passage times · see the Map tab', 'Actualizado ahora mismo · previsiones a las horas de paso estimadas · ver la pestaña Mapa', 'Gerade aktualisiert · Prognosen zu den geschätzten Durchfahrtszeiten · siehe Reiter Karte'],
+  ['Mis à jour', 'Updated', 'Actualizado', 'Aktualisiert'],
+  ['Mis à jour ', 'Updated ', 'Actualizado ', 'Aktualisiert '],
+  // — feuille de route
+  ['Feuille de route', 'Road book', 'Hoja de ruta', 'Streckenplan'],
+  ['Prévu', 'Planned', 'Previsto', 'Geplant'],
+  ['Réel', 'Actual', 'Real', 'Ist'],
+  ['Écart', 'Gap', 'Desfase', 'Abweichung'],
+  ['arrêt', 'stop', 'parada', 'Halt'],
+  ['Réel en blanc', 'Actual in white', 'Real en blanco', 'Ist in Weiß'],
+  ['estimé en gris italique', 'estimate in grey italics', 'estimado en gris cursiva', 'Schätzung in grauer Kursivschrift'],
+  ['≈ interpolé entre deux positions', '≈ interpolated between two positions', '≈ interpolado entre dos posiciones', '≈ zwischen zwei Positionen interpoliert'],
+  ['Écart = prévu − réel : + en avance, − en retard.', 'Gap = planned − actual: + ahead, − behind.', 'Desfase = previsto − real: + adelantado, − retrasado.', 'Abweichung = geplant − Ist: + voraus, − zurück.'],
+  ['Aucune position enregistrée : seul le prévu est affiché.', 'No position recorded: only the plan is shown.', 'Ninguna posición registrada: solo se muestra lo previsto.', 'Keine Position gespeichert: Es wird nur der Plan angezeigt.'],
+  ['Positions enregistrées', 'Recorded positions', 'Posiciones registradas', 'Gespeicherte Positionen'],
+  ['Rien pour l’instant.', 'Nothing yet.', 'Nada por ahora.', 'Noch nichts.'],
+  ['Heure de passage', 'Passage time', 'Hora de paso', 'Durchfahrtszeit'],
+  ['Par rapport au prévu', 'Versus plan', 'Respecto a lo previsto', 'Gegenüber dem Plan'],
+  ['Prochaine étape', 'Next stage', 'Próxima etapa', 'Nächste Etappe'],
+  ['PROCHAINE · km', 'NEXT · km', 'PRÓXIMA · km', 'NÄCHSTE · km'],
+  ['prévu', 'planned', 'previsto', 'geplant'],
+  ['réel', 'actual', 'real', 'Ist'],
+  ['Moi · km', 'Me · km', 'Yo · km', 'Ich · km'],
+  ['Moi', 'Me', 'Yo', 'Ich'],
+  ['manuel', 'manual', 'manual', 'manuell'],
+  // — carte
+  ['Profil d’altitude', 'Elevation profile', 'Perfil de altitud', 'Höhenprofil'],
+  ['Légende et infos', 'Legend and info', 'Leyenda e info', 'Legende und Infos'],
+  ['flèches = sens du vent', 'arrows = wind direction', 'flechas = dirección del viento', 'Pfeile = Windrichtung'],
+  ['Trajet = température (ou pente, au choix) :', 'Route = temperature (or slope, your choice):', 'Trayecto = temperatura (o pendiente, a elegir):', 'Strecke = Temperatur (oder Steigung, nach Wahl):'],
+  ['halo bleu = pluie (épaisseur = mm/h)', 'blue halo = rain (thickness = mm/h)', 'halo azul = lluvia (grosor = mm/h)', 'blauer Hof = Regen (Dicke = mm/h)'],
+  ['Pente :', 'Slope:', 'Pendiente:', 'Steigung:'],
+  ['descente', 'descent', 'bajada', 'Gefälle'],
+  ['étapes', 'stages', 'etapas', 'Etappen'],
+  ['Dénivelé +', 'Elevation gain +', 'Desnivel +', 'Höhenmeter +'],
+  ['Fais glisser le curseur, touche le profil ou lance ▶ pour parcourir le trajet. Touche le tracé pour noter un passage.', 'Drag the cursor, tap the profile or press ▶ to run through the route. Tap the track to note a passage.', 'Arrastra el cursor, toca el perfil o pulsa ▶ para recorrer el trayecto. Toca el trazado para anotar un paso.', 'Ziehe den Cursor, tippe auf das Profil oder drücke ▶, um die Strecke abzufahren. Tippe auf die Strecke, um eine Durchfahrt einzutragen.'],
+  ['Calques', 'Layers', 'Capas', 'Ebenen'],
+  ['Pluie', 'Rain', 'Lluvia', 'Regen'],
+  ['Température', 'Temperature', 'Temperatura', 'Temperatur'],
+  ['Couleur du trajet', 'Route colour', 'Color del trayecto', 'Streckenfarbe'],
+  ['⛰️ Pente', '⛰️ Slope', '⛰️ Pendiente', '⛰️ Steigung'],
+  ['🌡️ Température', '🌡️ Temperature', '🌡️ Temperatura', '🌡️ Temperatur'],
+  ['Moment affiché', 'Time shown', 'Momento mostrado', 'Angezeigter Zeitpunkt'],
+  ['À mon passage', 'At my passage', 'A mi paso', 'Bei meiner Durchfahrt'],
+  ['Heure fixe', 'Fixed time', 'Hora fija', 'Feste Zeit'],
+  ['Chaque point montre la météo prévue à l’heure où tu devrais y passer.', 'Each point shows the forecast for the time you should pass it.', 'Cada punto muestra el tiempo previsto a la hora en que deberías pasar.', 'Jeder Punkt zeigt die Prognose für die Zeit, zu der du dort sein solltest.'],
+  ['🎯 Devant moi', '🎯 Ahead of me', '🎯 Delante de mí', '🎯 Vor mir'],
+  ['🗺️ Tout le parcours', '🗺️ Whole route', '🗺️ Todo el recorrido', '🗺️ Ganze Strecke'],
+  ['↻ Actualiser la météo', '↻ Refresh the weather', '↻ Actualizar el tiempo', '↻ Wetter aktualisieren'],
+  ['Fond de carte', 'Base map', 'Mapa base', 'Hintergrundkarte'],
+  ['Météo mise à jour', 'Weather updated', 'Tiempo actualizado', 'Wetter aktualisiert'],
+  ['Chargement de la météo…', 'Loading the weather…', 'Cargando el tiempo…', 'Wetter wird geladen …'],
+  ['Météo indisponible (réseau).', 'Weather unavailable (network).', 'Tiempo no disponible (red).', 'Wetter nicht verfügbar (Netzwerk).'],
+  ['Dernières données conservées.', 'Last data kept.', 'Últimos datos conservados.', 'Letzte Daten beibehalten.'],
+  ['Hors ligne : prévisions du', 'Offline: forecasts from', 'Sin conexión: previsiones del', 'Offline: Prognosen vom'],
+  ['Hors ligne : pas de météo en cache.', 'Offline: no cached weather.', 'Sin conexión: no hay tiempo en caché.', 'Offline: kein Wetter im Cache.'],
+  ['Hors ligne : dernières prévisions affichées.', 'Offline: showing the latest forecasts.', 'Sin conexión: se muestran las últimas previsiones.', 'Offline: Die letzten Prognosen werden angezeigt.'],
+  ['Touche « Actualiser » (réseau requis).', 'Tap “Refresh” (network required).', 'Toca «Actualizar» (requiere red).', 'Tippe auf „Aktualisieren“ (Netzwerk erforderlich).'],
+  ['Aucune position enregistrée : touche « Position GPS » dans l’onglet Accueil.', 'No position recorded: tap “GPS position” in the Home tab.', 'Ninguna posición registrada: toca «Posición GPS» en la pestaña Inicio.', 'Keine Position gespeichert: Tippe im Reiter Start auf „GPS-Position“.'],
+  ['Bibliothèque de carte indisponible.', 'Map library unavailable.', 'Biblioteca de mapas no disponible.', 'Kartenbibliothek nicht verfügbar.'],
+  ['Les courbes apparaîtront à l’approche du départ.', 'The curves will appear as the start approaches.', 'Las curvas aparecerán al acercarse la salida.', 'Die Kurven erscheinen kurz vor dem Start.'],
+  ['Noter un passage ici', 'Note a passage here', 'Anotar un paso aquí', 'Durchfahrt hier eintragen'],
+  ['Ressentie (°C)', 'Feels like (°C)', 'Sensación (°C)', 'Gefühlt (°C)'],
+  ['Température (°C)', 'Temperature (°C)', 'Temperatura (°C)', 'Temperatur (°C)'],
+  ['Précipitations et nuages', 'Precipitation and clouds', 'Precipitación y nubes', 'Niederschlag und Wolken'],
+  ['Nuages (%)', 'Clouds (%)', 'Nubes (%)', 'Wolken (%)'],
+  ['Probabilité (%)', 'Probability (%)', 'Probabilidad (%)', 'Wahrscheinlichkeit (%)'],
+  ['Intensité (mm/h)', 'Intensity (mm/h)', 'Intensidad (mm/h)', 'Intensität (mm/h)'],
+  ['Vent (km/h)', 'Wind (km/h)', 'Viento (km/h)', 'Wind (km/h)'],
+  ['Rafales (km/h)', 'Gusts (km/h)', 'Rachas (km/h)', 'Böen (km/h)'],
+  ['Altitude (m)', 'Altitude (m)', 'Altitud (m)', 'Höhe (m)'],
+  ['Pluie :', 'Rain:', 'Lluvia:', 'Regen:'],
+  ['Vent :', 'Wind:', 'Viento:', 'Wind:'],
+  ['(ressenti', '(feels like', '(sensación', '(gefühlt'],
+  ['Dans', 'In', 'En', 'In'],
+  ['Zoom in', 'Zoom in', 'Acercar', 'Vergrößern'],
+  ['Zoom out', 'Zoom out', 'Alejar', 'Verkleinern'],
+  ['rafales', 'gusts', 'rachas', 'Böen'],
+  ['prévu', 'planned', 'previsto', 'geplant'],
+  ['passage', 'passage', 'paso', 'Durchfahrt'],
+  ['D+ restant', 'D+ remaining', 'D+ restante', 'Hm verbleibend'],
+  ['reste', 'left', 'quedan', 'noch'],
+  // — réglages
+  ['Apparence', 'Appearance', 'Apariencia', 'Darstellung'],
+  ['Automatique', 'Automatic', 'Automático', 'Automatisch'],
+  ['Nuit entre le coucher et le lever du soleil (selon ton parcours)', 'Night between sunset and sunrise (based on your route)', 'Noche entre la puesta y la salida del sol (según tu recorrido)', 'Nacht zwischen Sonnenunter- und -aufgang (je nach Strecke)'],
+  ['Réglage du téléphone', 'Phone setting', 'Ajuste del teléfono', 'Telefoneinstellung'],
+  ['Suit le mode sombre / clair d’Android', 'Follows Android’s dark / light mode', 'Sigue el modo oscuro / claro de Android', 'Folgt dem dunklen / hellen Modus von Android'],
+  ['Jour', 'Day', 'Día', 'Tag'],
+  ['Toujours clair', 'Always light', 'Siempre claro', 'Immer hell'],
+  ['Nuit', 'Night', 'Noche', 'Nacht'],
+  ['Toujours sombre', 'Always dark', 'Siempre oscuro', 'Immer dunkel'],
+  ['Actuellement :', 'Currently:', 'Actualmente:', 'Derzeit:'],
+  ['nuit 🌙', 'night 🌙', 'noche 🌙', 'Nacht 🌙'],
+  ['jour ☀️', 'day ☀️', 'día ☀️', 'Tag ☀️'],
+  ['Sauvegarde (tous les circuits)', 'Backup (all rides)', 'Copia de seguridad (todos los recorridos)', 'Sicherung (alle Touren)'],
+  ['Les données restent sur ce téléphone. L’export est une copie de sécurité (traces GPX comprises), à partager vers Drive ou par mail. L’import fusionne avec tes circuits actuels.', 'Data stays on this phone. The export is a backup copy (GPX tracks included), to share to Drive or by email. Import merges with your current rides.', 'Los datos permanecen en este teléfono. La exportación es una copia de seguridad (con los tracks GPX), para compartir en Drive o por correo. La importación se fusiona con tus recorridos actuales.', 'Die Daten bleiben auf diesem Telefon. Der Export ist eine Sicherungskopie (inkl. GPX-Strecken), die du über Drive oder per E-Mail teilen kannst. Der Import wird mit deinen aktuellen Touren zusammengeführt.'],
+  ['❓ Aide / manuel', '❓ Help / manual', '❓ Ayuda / manual', '❓ Hilfe / Handbuch'],
+  ['Langue', 'Language', 'Idioma', 'Sprache'],
+  ['Langue de l’interface', 'Interface language', 'Idioma de la interfaz', 'Sprache der Oberfläche'],
+  // — mode course
+  ['Course', 'Race', 'Carrera', 'Rennen'],
+  ['Météo', 'Weather', 'Tiempo', 'Wetter'],
+  ['Pointage', 'Check-in', 'Registro', 'Erfassung'],
+  ['Détails', 'Details', 'Detalles', 'Details'],
+  ['Je suis à l’étape', 'I’m at the stage', 'Estoy en la etapa', 'Ich bin an der Etappe'],
+  ['J’arrive à l’étape', 'I’m arriving at the stage', 'Llego a la etapa', 'Ich erreiche die Etappe'],
+  ['suivante ›', 'next ›', 'siguiente ›', 'weiter ›'],
+  ['‹ précédente', '‹ previous', '‹ anterior', '‹ zurück'],
+  ['−5 min', '−5 min', '−5 min', '−5 min'],
+  ['passée', 'passed', 'pasada', 'passiert'],
+  ['passées', 'passed', 'pasadas', 'passiert'],
+  ['étape', 'stage', 'etapa', 'Etappe'],
+  ['Hors prévision', 'Out of forecast', 'Fuera de previsión', 'Außerhalb der Prognose'],
+  ['Départ ', 'Start ', 'Salida ', 'Start '],
+  ['Heure de passage', 'Passage time', 'Hora de paso', 'Durchfahrtszeit'],
+  ['Pointer', 'Check in', 'Registrar', 'Erfassen'],
+  // — durées / unités
+];
+
+// Règles à réordonner (regex globales, appliquées avant le dictionnaire)
+const RX = [
+  [/Position à ([\d.]+) km du parcours : non enregistrée \(tolérance ([\d.]+) km, réglable dans Plan\)\./g,
+    'Position $1 km from the route: not recorded (tolerance $2 km, adjustable in Plan).',
+    'Posición a $1 km del recorrido: no registrada (tolerancia $2 km, ajustable en Plan).',
+    'Position $1 km von der Strecke entfernt: nicht gespeichert (Toleranz $2 km, in Plan einstellbar).'],
+  [/Avant le départ : position non enregistrée \(km ([\d.]+)\)\./g,
+    'Before the start: position not recorded (km $1).',
+    'Antes de la salida: posición no registrada (km $1).',
+    'Vor dem Start: Position nicht gespeichert (km $1).'],
+  [/(\d+) j(?![\p{L}])/gu, '$1 d', '$1 d', '$1 T'],
+  [/GPS : /g, 'GPS: ', 'GPS: ', 'GPS: '],
+  [/il y a (\d+ min|\d+h\d\d)/g, '$1 ago', 'hace $1', 'vor $1'],
+  [/Dénivelé \+ (\d+) m · distance (\d+) km\./g, 'Elevation gain + $1 m · distance $2 km.', 'Desnivel + $1 m · distancia $2 km.', 'Höhenmeter + $1 m · Entfernung $2 km.'],
+  [/Délai BRM pour (\d+) km : (\S+) · PBP : (\S+)\./g, 'BRM time limit for $1 km: $2 · PBP: $3.', 'Plazo BRM para $1 km: $2 · PBP: $3.', 'BRM-Zeitlimit für $1 km: $2 · PBP: $3.'],
+  [/(\d+) étapes? passées?/g, '$1 stage(s) passed', '$1 etapa(s) pasada(s)', '$1 Etappe(n) passiert'],
+  [/Le (lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|lunes|martes|miércoles|jueves|viernes|sábado|domingo|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)/g, '$1', 'El $1', 'Am $1'],
+];
+
+// ===== Aide intégrée, par langue =====
+const HELP = {
+fr: { back: '‹ Retour', title: 'Aide · MyBikePlanner', intro: 'Suivre une sortie (PBP, BRM…) par rapport au planning prévu. Tout reste sur ce téléphone : aucun compte, aucun serveur. Touche un titre pour déplier.',
+ secs: [
+  ['🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). La limite est <b>facultative</b> : dans Plan, l’interrupteur « Limite horaire » l’active ou non (par défaut : activée pour BRM/PBP, désactivée pour une sortie libre).</p>', true],
+  ['🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>'],
+  ['📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>'],
+  ['🗺️ Onglet Plan', '<ul><li><b>Départ</b> : heure de départ. L’interrupteur <b>Limite horaire</b> active ou non un temps maximum (activé par défaut pour un BRM ou un PBP, désactivé pour une sortie libre) ; activé, il affiche marge et vitesse minimale.</li><li><b>Étapes</b> : pour chaque contrôle, le <b>nom (touche-le : le texte est sélectionné, ou ✕ pour l’effacer, puis tape le nouveau)</b>, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>'],
+  ['📍 Suivre en course', '<p><b>Position GPS</b> : l’app lit ta position à l’ouverture ou quand tu touches le bouton, la projette sur la trace et enregistre un point. Il n’y a <b>aucun suivi en arrière-plan</b> : la batterie est préservée.</p><p><b>Saisir un passage</b> : pour noter à la main l’heure à laquelle tu es passé à un contrôle (heure exacte). Utile sans réseau GPS ou pour corriger.</p><p>L’écran d’accueil du circuit indique l’<b>avance / le retard</b> sur le prévu, la marge sur la limite, la vitesse minimale pour tenir le délai et les prochains passages recalculés.</p>'],
+  ['🏁 Mode course (affichage épuré)', '<p>Bouton « 🏁 Mode course » en haut de l’Accueil du circuit. Pensé pour la fatigue : gros chiffres, un seul bouton.</p><ul><li><b>Course</b> : avance/retard, prochaine étape (km, heure estimée, heure prévue), reste et arrivée. Le bouton <b>« Je suis à l’étape »</b> ouvre le pointage ; l’icône cible (en haut à droite) met à jour le GPS.</li><li><b>Étapes</b> : feuille de route, la prochaine est encadrée.</li><li><b>Météo</b> : température, pluie et vent aux prochaines étapes.</li><li><b>Pointage</b> : l’heure est proposée, ajuste avec −5 / +5 min, puis <b>Valider</b>.</li><li><b>Détails</b> : retour à l’app complète.</li></ul><p>Sans étapes intermédiaires, l’écran se simplifie et le gros bouton devient « Ma position ».</p>'],
+  ['📋 Onglet Route (feuille de route)', '<p>Tableau <b>prévu / réel / écart ±</b>. Les passages déjà effectués utilisent l’heure réelle (exacte si saisie à la main, « ≈ » si interpolée). Les suivants affichent une estimation en italique.</p>'],
+  ['🌦️ Carte et météo', '<ul><li><b>Flèches</b> le long du tracé : sens du vent (vers où il souffle). <span style="color:#ef4444">Rouge</span> = de face, <span style="color:#22c55e">vert</span> = dans le dos, gris = de côté. Touche une flèche pour le détail.</li><li><b>Couleur du trajet</b> : <b>Pente</b> (par défaut : bleu = descente, vert &lt; 3 %, jaune 3–6 %, orange 6–9 %, rouge &gt; 9 %) ou <b>Température</b> (bleu froid → rouge chaud). <b>Halo bleu</b> = pluie, plus épais si plus fort.</li><li><b>Calques</b> : Vent et Pluie activables séparément.</li><li><b>Moment affiché</b> : « À mon passage » (météo à l’heure prévue de passage en chaque point) ou « Heure fixe » avec curseur.</li><li><b>Noter un passage depuis la carte</b> : touche le tracé, puis « Noter un passage ici » ; le kilomètre est prérempli, tu ajustes l’heure et tu enregistres. <b>Devant moi / Tout le parcours</b> : cadrage. Les étapes sont les points violets étiquetés.</li><li><b>Profil d’altitude</b> sous la carte : pente en couleur, étapes en pointillés violets, ta position (orange). Le <b>curseur</b> (ou ▶ pour « jouer » le parcours, ×1 à ×8) déplace un point sur la carte et affiche km, altitude, pente, heure de passage et D+ restant. Touche ou fais glisser le profil pour aller à un endroit.</li><li><b>Courbes</b> sous la carte : température et ressentie, précipitations (probabilité, intensité) et nuages, vent et rafales, altitude, en fonction de l’heure de passage.</li></ul><p>Les prévisions viennent d’Open-Meteo et ne portent que sur <b>7 jours</b> : pour un départ plus lointain, elles apparaissent à l’approche. Hors ligne, les dernières données reçues restent affichées.</p><p>Le fond de carte (OpenStreetMap) est facultatif : décoche-le pour économiser les données ; le tracé reste visible.</p>'],
+  ['💾 Sauvegarde et données', '<p>⚙ Réglages → <b>Exporter</b> crée un fichier de sauvegarde de tous les circuits (traces comprises) et ouvre le partage Android : enregistre-le dans Drive, envoie-le par mail ou vers tes fichiers. <b>Importer</b> fusionne le fichier avec tes circuits actuels (un circuit de même identifiant est remplacé).</p><p>Les données sont stockées dans l’app. Désinstaller l’app les efface : fais un export avant. Mettre à jour l’APK par-dessus l’ancien les conserve.</p>'],
+  ['🌗 Jour / nuit', '<p>Bouton <b>⚙</b> en haut : choisis <b>Automatique</b> (nuit entre coucher et lever du soleil, calculés d’après ton parcours), <b>Réglage du téléphone</b>, <b>Jour</b> ou <b>Nuit</b>.</p>'],
+  ['🌐 Langue', '<p>⚙ Réglages → <b>Langue</b> : français, English, Español ou Deutsch. L’app te demande la langue au tout premier lancement. Les noms d’étapes issus du GPX ou saisis par toi ne sont pas traduits.</p>'],
+  ['🛟 Dépannage', '<ul><li><b>« Autorisation refusée »</b> : active la localisation pour l’app dans les réglages Android.</li><li><b>« Position à X km du parcours : non enregistrée »</b> : tu es hors tolérance. Augmente la tolérance dans Plan, ou saisis le passage à la main.</li><li><b>« Avant le départ »</b> : la position n’est enregistrée qu’à partir de 30 min avant l’heure de départ.</li><li><b>Météo indisponible</b> : pas de réseau ; réessaie avec « ↻ Actualiser ».</li><li><b>Départ modifié mais heures inchangées</b> : touche « ↻ Actualiser » dans Météo.</li><li><b>Bouton retour Android</b> : revient à la liste des circuits.</li></ul>']
+ ], foot: 'MyBikePlanner · usage personnel · estimations indicatives, pas un chronométrage officiel.' },
+
+en: { back: '‹ Back', title: 'Help · MyBikePlanner', intro: 'Follow a ride (PBP, BRM…) against its planned schedule. Everything stays on this phone: no account, no server. Tap a title to expand.',
+ secs: [
+  ['🚀 Get started in 3 steps', '<ol><li><b>Import a GPX</b>: “＋ New ride” on the home screen, or from the Calendar (“Plan a ride”).</li><li>In the <b>Plan</b> tab, choose the <b>type</b> (Free ride, BRM or PBP), the <b>start date and time</b>, then the speeds.</li><li>On the day, open the app and tap <b>📍 GPS position</b>.</li></ol><p>The type is never guessed: you choose it. It sets the maximum time (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). The limit is <b>optional</b>: in Plan, the “Time limit” switch turns it on or off (default: on for BRM/PBP, off for a free ride).</p>', true],
+  ['🏠 Home and rides', '<p>Each card is a ride (distance, climbing, limit, status). Tap it to open it. The 🗑 icon deletes it after confirmation.</p><p>Upcoming rides are sorted by start date, finished ones at the bottom.</p>'],
+  ['📅 Calendar', '<p>The calendar shows one dot per ride (blue BRM, orange PBP, green free ride). Tap a day to see its rides, “show all” to go back to the list.</p><p><b>Plan a ride</b>: choose the date, the type, then “New GPX…” or a copy of an already imported ride (handy for a route you ride several times). The copy starts without positions or weather.</p>'],
+  ['🗺️ Plan tab', '<ul><li><b>Start</b>: start time. The <b>Time limit</b> switch turns a maximum time on or off (on by default for a BRM or PBP, off for a free ride); when on, it shows margin and minimum speed.</li><li><b>Stages</b>: for each control, the <b>name (tap it: the text is selected, or ✕ to clear it, then type the new one)</b>, the km, the <b>average moving speed</b> to reach it from the previous one, and the <b>stop</b> in minutes (90 min or more = sleep 🌙).</li><li><b>Same speed</b>: applies one speed to all stages at once.</li><li><b>GPS tolerance</b>: maximum distance between you and the track for your position to be recorded (3 km by default; use 10 km for a test on a train).</li><li><b>Finish projection</b>: “planned schedule shifted by my gap” or “at my actual pace”.</li><li><b>Duplicate / Delete</b> the ride.</li></ul>'],
+  ['📍 Following a ride', '<p><b>GPS position</b>: the app reads your position when opened or when you tap the button, projects it onto the track and records a point. There is <b>no background tracking</b>: your battery is preserved.</p><p><b>Enter a passage</b>: to note by hand the time you passed a control (exact time). Useful without GPS signal or to correct.</p><p>The ride’s home screen shows your <b>lead / delay</b> against the plan, the margin on the limit, the minimum speed to meet the time limit and the recalculated next passages.</p>'],
+  ['🏁 Race mode (clean display)', '<p>“🏁 Race mode” button at the top of the ride’s Home. Designed for fatigue: big numbers, a single button.</p><ul><li><b>Race</b>: lead/delay, next stage (km, estimated time, planned time), remaining distance and finish. The <b>“I’m at the stage”</b> button opens the check-in; the target icon (top right) refreshes the GPS.</li><li><b>Stages</b>: road book, the next one is framed.</li><li><b>Weather</b>: temperature, rain and wind at the next stages.</li><li><b>Check-in</b>: the time is suggested, adjust with −5 / +5 min, then <b>Confirm</b>.</li><li><b>Details</b>: back to the full app.</li></ul><p>Without intermediate stages, the screen is simplified and the big button becomes “My position”.</p>'],
+  ['📋 Route tab (road book)', '<p>Table <b>planned / actual / gap ±</b>. Passages already made use the actual time (exact if entered by hand, “≈” if interpolated). The following ones show an estimate in italics.</p>'],
+  ['🌦️ Map and weather', '<ul><li><b>Arrows</b> along the track: wind direction (where it blows to). <span style="color:#ef4444">Red</span> = headwind, <span style="color:#22c55e">green</span> = tailwind, grey = crosswind. Tap an arrow for details.</li><li><b>Route colour</b>: <b>Slope</b> (default: blue = descent, green &lt; 3 %, yellow 3–6 %, orange 6–9 %, red &gt; 9 %) or <b>Temperature</b> (cold blue → hot red). <b>Blue halo</b> = rain, thicker when heavier.</li><li><b>Layers</b>: Wind and Rain can be switched on and off separately.</li><li><b>Time shown</b>: “At my passage” (weather at the planned passage time at each point) or “Fixed time” with a slider.</li><li><b>Note a passage from the map</b>: tap the track, then “Note a passage here”; the kilometre is prefilled, adjust the time and save. <b>Ahead of me / Whole route</b>: framing. Stages are the labelled purple points.</li><li><b>Elevation profile</b> under the map: slope in colour, stages as purple dotted lines, your position (orange). The <b>cursor</b> (or ▶ to “play” the route, ×1 to ×8) moves a point on the map and shows km, altitude, slope, passage time and remaining D+. Tap or drag the profile to jump to a place.</li><li><b>Curves</b> under the map: temperature and feels-like, precipitation (probability, intensity) and clouds, wind and gusts, altitude, as a function of passage time.</li></ul><p>Forecasts come from Open-Meteo and cover only <b>7 days</b>: for a later start, they appear as it approaches. Offline, the last data received stays displayed.</p><p>The base map (OpenStreetMap) is optional: untick it to save data; the track remains visible.</p>'],
+  ['💾 Backup and data', '<p>⚙ Settings → <b>Export</b> creates a backup file of all rides (tracks included) and opens Android sharing: save it to Drive, email it or send it to your files. <b>Import</b> merges the file with your current rides (a ride with the same identifier is replaced).</p><p>Data is stored in the app. Uninstalling the app erases it: export first. Updating the APK over the old one keeps it.</p>'],
+  ['🌗 Day / night', '<p><b>⚙</b> button at the top: choose <b>Automatic</b> (night between sunset and sunrise, computed from your route), <b>Phone setting</b>, <b>Day</b> or <b>Night</b>.</p>'],
+  ['🌐 Language', '<p>⚙ Settings → <b>Language</b>: français, English, Español or Deutsch. The app asks for the language on the very first launch. Stage names coming from the GPX or typed by you are not translated.</p>'],
+  ['🛟 Troubleshooting', '<ul><li><b>“Permission denied”</b>: enable location for the app in the Android settings.</li><li><b>“Position X km from the route: not recorded”</b>: you are outside the tolerance. Increase the tolerance in Plan, or enter the passage by hand.</li><li><b>“Before the start”</b>: the position is only recorded from 30 min before the start time.</li><li><b>Weather unavailable</b>: no network; try again with “↻ Refresh”.</li><li><b>Start changed but times unchanged</b>: tap “↻ Refresh” in Weather.</li><li><b>Android back button</b>: returns to the ride list.</li></ul>']
+ ], foot: 'MyBikePlanner · personal use · indicative estimates, not official timing.' },
+
+es: { back: '‹ Volver', title: 'Ayuda · MyBikePlanner', intro: 'Sigue una salida (PBP, BRM…) respecto al plan previsto. Todo se queda en este teléfono: sin cuenta, sin servidor. Toca un título para desplegar.',
+ secs: [
+  ['🚀 Empezar en 3 pasos', '<ol><li><b>Importa un GPX</b>: «＋ Nuevo recorrido» en el inicio, o desde la Agenda («Planificar una salida»).</li><li>En la pestaña <b>Plan</b>, elige el <b>tipo</b> (Salida libre, BRM o PBP), la <b>fecha y hora de salida</b> y luego las velocidades.</li><li>El día D, abre la app y toca <b>📍 Posición GPS</b>.</li></ol><p>El tipo nunca se adivina: lo eliges tú. Fija el plazo máximo (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). El límite es <b>opcional</b>: en Plan, el interruptor «Límite horario» lo activa o no (por defecto: activado para BRM/PBP, desactivado para una salida libre).</p>', true],
+  ['🏠 Inicio y recorridos', '<p>Cada tarjeta es un recorrido (distancia, desnivel, límite, estado). Tócala para abrirla. El icono 🗑 la elimina tras confirmación.</p><p>Los recorridos próximos se ordenan por fecha de salida, los terminados al final.</p>'],
+  ['📅 Agenda', '<p>El calendario muestra un punto por salida (azul BRM, naranja PBP, verde salida libre). Toca un día para ver sus salidas, «ver todo» para volver a la lista.</p><p><b>Planificar una salida</b>: elige la fecha, el tipo y luego «Nuevo GPX…» o la copia de un recorrido ya importado (útil para un recorrido que repites). La copia empieza sin posiciones ni tiempo.</p>'],
+  ['🗺️ Pestaña Plan', '<ul><li><b>Salida</b>: hora de salida. El interruptor <b>Límite horario</b> activa o no un tiempo máximo (activado por defecto para BRM o PBP, desactivado para una salida libre); activado, muestra margen y velocidad mínima.</li><li><b>Etapas</b>: para cada control, el <b>nombre (tócalo: el texto se selecciona, o ✕ para borrarlo, y escribe el nuevo)</b>, el km, la <b>velocidad media en marcha</b> para llegar desde el anterior y la <b>parada</b> en minutos (90 min o más = sueño 🌙).</li><li><b>Misma velocidad</b>: aplica una velocidad a todas las etapas de golpe.</li><li><b>Tolerancia GPS</b>: distancia máxima entre tú y el track para registrar tu posición (3 km por defecto; pon 10 km para una prueba en tren).</li><li><b>Proyección de la llegada</b>: «plan previsto desplazado por mi desfase» o «al ritmo real observado».</li><li><b>Duplicar / Eliminar</b> el recorrido.</li></ul>'],
+  ['📍 Seguir en carrera', '<p><b>Posición GPS</b>: la app lee tu posición al abrirla o al tocar el botón, la proyecta sobre el track y registra un punto. <b>No hay seguimiento en segundo plano</b>: se preserva la batería.</p><p><b>Anotar un paso</b>: para apuntar a mano la hora a la que pasaste por un control (hora exacta). Útil sin señal GPS o para corregir.</p><p>La pantalla de inicio del recorrido indica tu <b>adelanto / retraso</b> sobre lo previsto, el margen sobre el límite, la velocidad mínima para cumplir el plazo y los próximos pasos recalculados.</p>'],
+  ['🏁 Modo carrera (pantalla simplificada)', '<p>Botón «🏁 Modo carrera» arriba en el Inicio del recorrido. Pensado para el cansancio: números grandes, un solo botón.</p><ul><li><b>Carrera</b>: adelanto/retraso, próxima etapa (km, hora estimada, hora prevista), resto y llegada. El botón <b>«Estoy en la etapa»</b> abre el registro; el icono de diana (arriba a la derecha) actualiza el GPS.</li><li><b>Etapas</b>: hoja de ruta, la siguiente va enmarcada.</li><li><b>Tiempo</b>: temperatura, lluvia y viento en las próximas etapas.</li><li><b>Registro</b>: se propone la hora, ajusta con −5 / +5 min y luego <b>Validar</b>.</li><li><b>Detalles</b>: vuelta a la app completa.</li></ul><p>Sin etapas intermedias, la pantalla se simplifica y el botón grande pasa a ser «Mi posición».</p>'],
+  ['📋 Pestaña Ruta (hoja de ruta)', '<p>Tabla <b>previsto / real / desfase ±</b>. Los pasos ya realizados usan la hora real (exacta si se anotó a mano, «≈» si se interpoló). Los siguientes muestran una estimación en cursiva.</p>'],
+  ['🌦️ Mapa y tiempo', '<ul><li><b>Flechas</b> a lo largo del trazado: dirección del viento (hacia dónde sopla). <span style="color:#ef4444">Rojo</span> = de frente, <span style="color:#22c55e">verde</span> = de cola, gris = de lado. Toca una flecha para el detalle.</li><li><b>Color del trayecto</b>: <b>Pendiente</b> (por defecto: azul = bajada, verde &lt; 3 %, amarillo 3–6 %, naranja 6–9 %, rojo &gt; 9 %) o <b>Temperatura</b> (azul frío → rojo cálido). <b>Halo azul</b> = lluvia, más grueso si es más fuerte.</li><li><b>Capas</b>: Viento y Lluvia se activan por separado.</li><li><b>Momento mostrado</b>: «A mi paso» (tiempo a la hora prevista de paso en cada punto) o «Hora fija» con deslizador.</li><li><b>Anotar un paso desde el mapa</b>: toca el trazado y luego «Anotar un paso aquí»; el kilómetro viene rellenado, ajusta la hora y guarda. <b>Delante de mí / Todo el recorrido</b>: encuadre. Las etapas son los puntos morados con etiqueta.</li><li><b>Perfil de altitud</b> bajo el mapa: pendiente en color, etapas en punteado morado, tu posición (naranja). El <b>cursor</b> (o ▶ para «reproducir» el recorrido, ×1 a ×8) mueve un punto en el mapa y muestra km, altitud, pendiente, hora de paso y D+ restante. Toca o arrastra el perfil para ir a un lugar.</li><li><b>Curvas</b> bajo el mapa: temperatura y sensación, precipitaciones (probabilidad, intensidad) y nubes, viento y rachas, altitud, según la hora de paso.</li></ul><p>Las previsiones vienen de Open-Meteo y solo cubren <b>7 días</b>: para una salida más lejana, aparecen al acercarse. Sin conexión, se siguen mostrando los últimos datos recibidos.</p><p>El mapa base (OpenStreetMap) es opcional: desmárcalo para ahorrar datos; el trazado sigue visible.</p>'],
+  ['💾 Copia de seguridad y datos', '<p>⚙ Ajustes → <b>Exportar</b> crea un archivo de copia de todos los recorridos (con los tracks) y abre el menú de compartir de Android: guárdalo en Drive, envíalo por correo o a tus archivos. <b>Importar</b> fusiona el archivo con tus recorridos actuales (un recorrido con el mismo identificador se reemplaza).</p><p>Los datos se guardan en la app. Desinstalarla los borra: exporta antes. Actualizar el APK sobre el anterior los conserva.</p>'],
+  ['🌗 Día / noche', '<p>Botón <b>⚙</b> arriba: elige <b>Automático</b> (noche entre la puesta y la salida del sol, calculadas según tu recorrido), <b>Ajuste del teléfono</b>, <b>Día</b> o <b>Noche</b>.</p>'],
+  ['🌐 Idioma', '<p>⚙ Ajustes → <b>Idioma</b>: français, English, Español o Deutsch. La app te pregunta el idioma en el primer arranque. Los nombres de etapas del GPX o escritos por ti no se traducen.</p>'],
+  ['🛟 Solución de problemas', '<ul><li><b>«Permiso denegado»</b>: activa la ubicación para la app en los ajustes de Android.</li><li><b>«Posición a X km del recorrido: no registrada»</b>: estás fuera de la tolerancia. Aumenta la tolerancia en Plan o anota el paso a mano.</li><li><b>«Antes de la salida»</b>: la posición solo se registra desde 30 min antes de la hora de salida.</li><li><b>Tiempo no disponible</b>: sin red; vuelve a intentarlo con «↻ Actualizar».</li><li><b>Salida modificada pero horas sin cambios</b>: toca «↻ Actualizar» en Tiempo.</li><li><b>Botón atrás de Android</b>: vuelve a la lista de recorridos.</li></ul>']
+ ], foot: 'MyBikePlanner · uso personal · estimaciones orientativas, no un cronometraje oficial.' },
+
+de: { back: '‹ Zurück', title: 'Hilfe · MyBikePlanner', intro: 'Verfolge eine Tour (PBP, BRM …) gegenüber dem geplanten Zeitplan. Alles bleibt auf diesem Telefon: kein Konto, kein Server. Tippe auf einen Titel zum Aufklappen.',
+ secs: [
+  ['🚀 In 3 Schritten starten', '<ol><li><b>GPX importieren</b>: „＋ Neue Tour“ auf dem Startbildschirm oder über den Kalender („Tour planen“).</li><li>Wähle im Reiter <b>Plan</b> den <b>Typ</b> (Freie Tour, BRM oder PBP), das <b>Startdatum und die Startzeit</b> und danach die Geschwindigkeiten.</li><li>Am Tag selbst öffnest du die App und tippst auf <b>📍 GPS-Position</b>.</li></ol><p>Der Typ wird nie erraten: Du wählst ihn. Er legt die Höchstzeit fest (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). Das Limit ist <b>optional</b>: In Plan schaltet der Schalter „Zeitlimit“ es ein oder aus (Standard: an für BRM/PBP, aus für eine freie Tour).</p>', true],
+  ['🏠 Start und Touren', '<p>Jede Karte ist eine Tour (Entfernung, Höhenmeter, Limit, Status). Tippe darauf, um sie zu öffnen. Das Symbol 🗑 löscht sie nach Bestätigung.</p><p>Kommende Touren sind nach Startdatum sortiert, beendete stehen unten.</p>'],
+  ['📅 Kalender', '<p>Der Kalender zeigt einen Punkt pro Tour (blau BRM, orange PBP, grün freie Tour). Tippe auf einen Tag, um seine Touren zu sehen, „alle anzeigen“ führt zur Liste zurück.</p><p><b>Tour planen</b>: Wähle Datum und Typ, dann „Neue GPX …“ oder die Kopie einer bereits importierten Tour (praktisch für eine mehrfach gefahrene Strecke). Die Kopie startet ohne Positionen und Wetter.</p>'],
+  ['🗺️ Reiter Plan', '<ul><li><b>Start</b>: Startzeit. Der Schalter <b>Zeitlimit</b> schaltet eine Höchstzeit ein oder aus (Standard: an für BRM oder PBP, aus für eine freie Tour); wenn an, werden Reserve und Mindestgeschwindigkeit angezeigt.</li><li><b>Etappen</b>: für jede Kontrolle der <b>Name (antippen: der Text wird markiert, oder ✕ zum Löschen, dann den neuen eingeben)</b>, der km, die <b>durchschnittliche Fahrgeschwindigkeit</b> ab der vorherigen Kontrolle und der <b>Halt</b> in Minuten (ab 90 min = Schlaf 🌙).</li><li><b>Gleiche Geschwindigkeit</b>: wendet eine Geschwindigkeit auf alle Etappen auf einmal an.</li><li><b>GPS-Toleranz</b>: maximale Entfernung zwischen dir und der Strecke, damit deine Position gespeichert wird (standardmäßig 3 km; für einen Test im Zug 10 km).</li><li><b>Ankunftsprognose</b>: „geplanter Ablauf, um meine Abweichung verschoben“ oder „mit meinem tatsächlichen Tempo“.</li><li><b>Duplizieren / Löschen</b> der Tour.</li></ul>'],
+  ['📍 Unterwegs verfolgen', '<p><b>GPS-Position</b>: Die App liest deine Position beim Öffnen oder beim Tippen auf die Schaltfläche, projiziert sie auf die Strecke und speichert einen Punkt. Es gibt <b>keine Verfolgung im Hintergrund</b>: Der Akku wird geschont.</p><p><b>Durchfahrt eintragen</b>: um die Uhrzeit, zu der du eine Kontrolle passiert hast, von Hand zu notieren (genaue Zeit). Nützlich ohne GPS-Signal oder zum Korrigieren.</p><p>Der Startbildschirm der Tour zeigt deinen <b>Vorsprung / Rückstand</b> gegenüber dem Plan, die Reserve zum Limit, die Mindestgeschwindigkeit für das Zeitlimit und die neu berechneten nächsten Durchfahrten.</p>'],
+  ['🏁 Rennmodus (reduzierte Anzeige)', '<p>Schaltfläche „🏁 Rennmodus“ oben im Start der Tour. Für müde Momente gedacht: große Zahlen, nur eine Schaltfläche.</p><ul><li><b>Rennen</b>: Vorsprung/Rückstand, nächste Etappe (km, geschätzte Zeit, geplante Zeit), Restdistanz und Ziel. Die Schaltfläche <b>„Ich bin an der Etappe“</b> öffnet die Erfassung; das Zielsymbol (oben rechts) aktualisiert das GPS.</li><li><b>Etappen</b>: Streckenplan, die nächste ist umrahmt.</li><li><b>Wetter</b>: Temperatur, Regen und Wind an den nächsten Etappen.</li><li><b>Erfassung</b>: Die Zeit wird vorgeschlagen, passe sie mit −5 / +5 min an und tippe auf <b>Bestätigen</b>.</li><li><b>Details</b>: zurück zur vollständigen App.</li></ul><p>Ohne Zwischenetappen vereinfacht sich der Bildschirm und die große Schaltfläche heißt „Meine Position“.</p>'],
+  ['📋 Reiter Route (Streckenplan)', '<p>Tabelle <b>geplant / Ist / Abweichung ±</b>. Bereits absolvierte Durchfahrten verwenden die tatsächliche Zeit (exakt bei Handeingabe, „≈“ bei Interpolation). Die folgenden zeigen eine Schätzung in Kursivschrift.</p>'],
+  ['🌦️ Karte und Wetter', '<ul><li><b>Pfeile</b> entlang der Strecke: Windrichtung (wohin er weht). <span style="color:#ef4444">Rot</span> = Gegenwind, <span style="color:#22c55e">grün</span> = Rückenwind, grau = Seitenwind. Tippe auf einen Pfeil für Details.</li><li><b>Streckenfarbe</b>: <b>Steigung</b> (Standard: blau = Gefälle, grün &lt; 3 %, gelb 3–6 %, orange 6–9 %, rot &gt; 9 %) oder <b>Temperatur</b> (kaltes Blau → warmes Rot). <b>Blauer Hof</b> = Regen, dicker bei stärkerem Regen.</li><li><b>Ebenen</b>: Wind und Regen lassen sich getrennt ein- und ausschalten.</li><li><b>Angezeigter Zeitpunkt</b>: „Bei meiner Durchfahrt“ (Wetter zur geplanten Durchfahrtszeit an jedem Punkt) oder „Feste Zeit“ mit Schieberegler.</li><li><b>Durchfahrt von der Karte eintragen</b>: Tippe auf die Strecke, dann auf „Durchfahrt hier eintragen“; der Kilometer ist vorausgefüllt, passe die Zeit an und speichere. <b>Vor mir / Ganze Strecke</b>: Ausschnitt. Etappen sind die beschrifteten violetten Punkte.</li><li><b>Höhenprofil</b> unter der Karte: Steigung farbig, Etappen als violette gepunktete Linien, deine Position (orange). Der <b>Cursor</b> (oder ▶, um die Strecke „abzuspielen“, ×1 bis ×8) bewegt einen Punkt auf der Karte und zeigt km, Höhe, Steigung, Durchfahrtszeit und verbleibende Hm. Tippe auf das Profil oder ziehe darauf, um zu einer Stelle zu springen.</li><li><b>Kurven</b> unter der Karte: Temperatur und gefühlte Temperatur, Niederschlag (Wahrscheinlichkeit, Intensität) und Wolken, Wind und Böen, Höhe, jeweils nach Durchfahrtszeit.</li></ul><p>Die Prognosen stammen von Open-Meteo und decken nur <b>7 Tage</b> ab: Bei späterem Start erscheinen sie kurz davor. Offline bleiben die zuletzt empfangenen Daten sichtbar.</p><p>Die Hintergrundkarte (OpenStreetMap) ist optional: Deaktiviere sie, um Daten zu sparen; die Strecke bleibt sichtbar.</p>'],
+  ['💾 Sicherung und Daten', '<p>⚙ Einstellungen → <b>Exportieren</b> erstellt eine Sicherungsdatei aller Touren (inkl. Strecken) und öffnet das Android-Teilen: in Drive speichern, per E-Mail senden oder in deine Dateien legen. <b>Importieren</b> führt die Datei mit deinen aktuellen Touren zusammen (eine Tour mit gleicher Kennung wird ersetzt).</p><p>Die Daten werden in der App gespeichert. Beim Deinstallieren der App gehen sie verloren: vorher exportieren. Ein APK-Update über die alte Version behält sie.</p>'],
+  ['🌗 Tag / Nacht', '<p>Schaltfläche <b>⚙</b> oben: Wähle <b>Automatisch</b> (Nacht zwischen Sonnenuntergang und -aufgang, berechnet anhand deiner Strecke), <b>Telefoneinstellung</b>, <b>Tag</b> oder <b>Nacht</b>.</p>'],
+  ['🌐 Sprache', '<p>⚙ Einstellungen → <b>Sprache</b>: français, English, Español oder Deutsch. Die App fragt beim allerersten Start nach der Sprache. Etappennamen aus dem GPX oder von dir eingegebene werden nicht übersetzt.</p>'],
+  ['🛟 Fehlerbehebung', '<ul><li><b>„Berechtigung verweigert“</b>: Aktiviere den Standort für die App in den Android-Einstellungen.</li><li><b>„Position X km von der Strecke entfernt: nicht gespeichert“</b>: Du bist außerhalb der Toleranz. Erhöhe die Toleranz in Plan oder trage die Durchfahrt von Hand ein.</li><li><b>„Vor dem Start“</b>: Die Position wird erst ab 30 min vor der Startzeit gespeichert.</li><li><b>Wetter nicht verfügbar</b>: kein Netz; versuche es erneut mit „↻ Aktualisieren“.</li><li><b>Start geändert, aber Zeiten unverändert</b>: Tippe im Wetter auf „↻ Aktualisieren“.</li><li><b>Android-Zurück-Taste</b>: führt zur Tourenliste zurück.</li></ul>']
+ ], foot: 'MyBikePlanner · persönliche Nutzung · Richtwerte, keine offizielle Zeitmessung.' }
+};
+
+// ===== I18N : moteur =====
+const LANGS = { fr: { n: 'Français', loc: 'fr-FR' }, en: { n: 'English', loc: 'en-GB' }, es: { n: 'Español', loc: 'es-ES' }, de: { n: 'Deutsch', loc: 'de-DE' } };
+const WD1 = { fr: ['L', 'M', 'M', 'J', 'V', 'S', 'D'], en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], es: ['L', 'M', 'X', 'J', 'V', 'S', 'D'], de: ['M', 'D', 'M', 'D', 'F', 'S', 'S'] };
+let LANG = 'fr', _iMap = null, _iRe = null;
+const LOC = () => LANGS[LANG].loc;
+const _nrm = s => s.replace(/'/g, '’');
+function i18nBuild() {
+  const ix = { en: 1, es: 2, de: 3 }[LANG]; _iMap = null; _iRe = null; if (!ix) return;
+  _iMap = new Map(); for (const r of TR) { const k = _nrm(r[0]); if (!_iMap.has(k)) _iMap.set(k, r[ix]); }
+  const W = '\\p{L}\\p{N}', keys = [..._iMap.keys()].sort((a, b) => b.length - a.length);
+  _iRe = new RegExp(keys.map(k => (/^[\p{L}\p{N}]/u.test(k) ? '(?<![' + W + '])' : '') + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + (/[\p{L}\p{N}]$/u.test(k) ? '(?![' + W + '])' : '')).join('|'), 'gu');
+}
+function tr(s) {
+  if (LANG === 'fr' || !s || !_iMap) return s;
+  const n = _nrm(s), t = n.trim(); if (!/[A-Za-zÀ-ÿ]/.test(t)) return s;
+  const e = _iMap.get(t); if (e !== undefined) return n.slice(0, n.indexOf(t)) + e + n.slice(n.indexOf(t) + t.length);
+  const ix = { en: 1, es: 2, de: 3 }[LANG]; let r = n;
+  for (const x of RX) r = r.replace(x[0], x[ix]);
+  r = r.replace(_iRe, m => _iMap.get(m) || m);
+  return r;
+}
+const _tO = new WeakMap(), _tL = new WeakMap(), _aO = new WeakMap();
+function trText(n) {
+  const p = n.parentElement; if (!p || /^(SCRIPT|STYLE|TEXTAREA)$/.test(p.tagName) || p.closest('[data-nt]')) return;
+  let v = n.nodeValue; if (_tL.get(n) === v && _tO.has(n)) v = _tO.get(n); else _tO.set(n, v);
+  const t = tr(v); if (t !== n.nodeValue) n.nodeValue = t; _tL.set(n, t);
+}
+const _ATT = ['placeholder', 'title', 'aria-label'];
+function trAttrs(el) {
+  if (el.closest && el.closest('[data-nt]')) return;
+  for (const a of _ATT) { const cur = el.getAttribute(a); if (cur == null) continue; let m = _aO.get(el); if (!m) { m = {}; _aO.set(el, m); } const rec = m[a]; let v = cur; if (rec && rec.l === cur) v = rec.o; else m[a] = { o: cur, l: cur }; const t = tr(v); m[a] = { o: v, l: t }; if (t !== cur) el.setAttribute(a, t); }
+}
+function trAll(root) {
+  root = root || document.body; if (root.nodeType === 3) { trText(root); return; } if (root.nodeType !== 1) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; const arr = []; while ((n = w.nextNode())) arr.push(n); arr.forEach(trText);
+  if (root.matches && root.matches('[placeholder],[title],[aria-label]')) trAttrs(root);
+  root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(trAttrs);
+}
+let _mo = null;
+function i18nStart() {
+  _mo = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.type === 'characterData') trText(m.target);
+      else if (m.type === 'attributes') trAttrs(m.target);
+      else m.addedNodes.forEach(nd => trAll(nd));
+    }
+    _mo.takeRecords();
+  });
+  _mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: _ATT });
+}
+function setLang(l) {
+  if (!LANGS[l]) l = 'fr'; LANG = l; if (G && G.set) G.set.lang = l; i18nBuild();
+  document.documentElement.lang = l; save(); render(); trAll(document.body);
+}
+const _al = window.alert.bind(window), _cf = window.confirm.bind(window);
+window.alert = m => _al(tr(String(m))); window.confirm = m => _cf(tr(String(m)));
+function renderLangPick() {
+  return '<div data-nt style="display:grid;gap:12px;justify-items:center;text-align:center;padding:28px 8px"><span class="lg">' + LOGO + '</span><h1 style="margin:0">MyBikePlanner</h1>' +
+    '<div class="msg" style="margin:0">Choisis ta langue · Choose your language<br>Elige tu idioma · Wähle deine Sprache</div><div class="topts" style="width:100%;max-width:340px">' +
+    Object.keys(LANGS).map(k => '<button class="topt" data-lang="' + k + '" style="align-items:center"><b style="font-size:18px">' + LANGS[k].n + '</b></button>').join('') + '</div></div>';
+}
+function renderLangCard() {
+  return '<div class="card" data-nt><h2>🌐 Langue · Language · Idioma · Sprache</h2><div class="topts">' +
+    Object.keys(LANGS).map(k => '<button class="topt' + (LANG === k ? ' on' : '') + '" data-lang="' + k + '"><b>' + LANGS[k].n + '</b></button>').join('') + '</div></div>';
+}
+
 
 // ===== État & stockage local =====
 const $ = s => document.querySelector(s);
@@ -349,7 +786,7 @@ const LOGO = '<svg viewBox="0 0 64 64" width="30" height="30" fill="none" stroke
 let G = { v: 2, rides: [], cur: null, set: { theme: 'auto' } };
 let S = null; // circuit ouvert (objet de G.rides)
 let memOnly = false;
-let ui = { pendKm: null, settings: false, help: false, rtab: 'run', rsel: 0, rt0: 0, roff: 0, home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
+let ui = { pendKm: null, settings: false, help: false, rtab: 'run', rsel: 0, rt0: 0, roff: 0, home: 'list', cal: null, calSel: null, pending: null, layers: { wind: true, temp: true, rain: true }, routeCol: 'slope', tab: 'dash', manual: false, msg: '', wxMsg: '', mapMode: 'pass', mapOff: 0, tiles: true, mapMsg: '', mapView: null };
 let mapObj = null, wxLayer = null, mapAll = null;
 
 function newRide(name) {
@@ -372,6 +809,8 @@ async function load() {
     }
   } catch (e) { memOnly = true; }
   if (!G.set) G.set = { theme: 'auto' };
+  if (!G.set.lang && G.rides.length) G.set.lang = 'fr';
+  if (G.set.lang) { LANG = LANGS[G.set.lang] ? G.set.lang : 'fr'; i18nBuild(); document.documentElement.lang = LANG; }
   for (const r of G.rides) { if (r.kind === 'Circuit' || !r.kind) r.kind = 'Sortie'; else if (/^BRM/.test(r.kind)) r.kind = 'BRM'; if (r.tol == null) r.tol = 3; if (r.useLimit == null) r.useLimit = r.kind !== 'Sortie'; }
   S = G.rides.find(r => r.id === G.cur) || null;
 }
@@ -383,11 +822,11 @@ const unpackRide = r => { if (r.track && !(r.track.lat instanceof Float64Array))
 const pad = n => String(n).padStart(2, '0');
 function fmtDur(ms) { const m = Math.round(Math.abs(ms) / 60000); return Math.floor(m / 60) + 'h' + pad(m % 60); }
 const limLabel = h => fmtDur(h * 3600e3);
-function fmtDT(ms) { return new Date(ms).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
-function fmtT(ms) { return new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+function fmtDT(ms) { return new Date(ms).toLocaleString(LOC(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function fmtT(ms) { return new Date(ms).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' }); }
 function toInput(ms) { const d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 function ago(ms) { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "à l'instant" : m < 60 ? 'il y a ' + m + ' min' : 'il y a ' + fmtDur(Date.now() - ms); }
-const fmtS = ms => new Date(ms).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
+const fmtS = ms => new Date(ms).toLocaleString(LOC(), { weekday: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
 
 function curPlan(r = S) { return r && r.track ? buildPlan(r.controls, r.depMs) : null; }
 function lastReading(r = S) {
@@ -431,16 +870,16 @@ function renderAgenda() {
   const first = new Date(c.y, c.m, 1), lead = (first.getDay() + 6) % 7, dim = new Date(c.y, c.m + 1, 0).getDate();
   const key = d => d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(), by = {};
   for (const r of G.rides) (by[key(new Date(r.depMs))] = by[key(new Date(r.depMs))] || []).push(r);
-  const month = first.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const month = first.toLocaleDateString(LOC(), { month: 'long', year: 'numeric' });
   let h = '<div class="card"><div class="calh"><button class="g" data-act="calprev">‹</button><b>' + month + '</b><button class="g" data-act="calnext">›</button></div>' +
-    '<div class="cal">' + ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => '<div class="cw">' + x + '</div>').join('') + '<div></div>'.repeat(lead);
+    '<div class="cal">' + WD1[LANG].map(x => '<div class="cw">' + x + '</div>').join('') + '<div></div>'.repeat(lead);
   for (let d = 1; d <= dim; d++) {
     const k = c.y + '-' + c.m + '-' + d, R = by[k] || [], today = key(now) === k;
     h += '<div class="cd' + (today ? ' today' : '') + (ui.calSel === k ? ' sel' : '') + (R.length ? ' has' : '') + '" data-day="' + k + '"><span>' + d + '</span><div class="dts">' + R.slice(0, 3).map(r => '<i style="background:' + KCOL[r.kind] + '"></i>').join('') + '</div></div>';
   }
   h += '</div><div class="leg"><span><i style="background:' + KCOL.BRM + '"></i>BRM</span><span><i style="background:' + KCOL.PBP + '"></i>PBP</span><span><i style="background:' + KCOL.Sortie + '"></i>Sortie</span></div></div>';
   let list, title;
-  if (ui.calSel) { list = by[ui.calSel] || []; const p = ui.calSel.split('-'); title = 'Le ' + new Date(+p[0], +p[1], +p[2]).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  if (ui.calSel) { list = by[ui.calSel] || []; const p = ui.calSel.split('-'); title = 'Le ' + new Date(+p[0], +p[1], +p[2]).toLocaleDateString(LOC(), { weekday: 'long', day: 'numeric', month: 'long' }); }
   else { list = G.rides.filter(r => r.depMs + r.limitH * 3600e3 >= now.getTime()).sort((a, b) => a.depMs - b.depMs); title = 'Sorties à venir'; }
   h += '<div class="card" style="padding-bottom:4px"><h2>' + esc(title) + (ui.calSel ? ' <a href="#" data-act="calclear" style="color:var(--acc);text-transform:none;letter-spacing:0">tout voir</a>' : '') + '</h2></div>';
   h += list.length ? list.map(rideCard).join('') : '<div class="card empty">Aucune sortie.</div>';
@@ -559,6 +998,13 @@ function renderRoute() {
 let profG = null, curMark = null, playTimer = null;
 function smEle(T, km) { let s = 0, n = 0; for (let d = -0.4; d <= 0.41; d += 0.2) { const k = Math.min(T.total, Math.max(0, km + d)); s += eleAtKm(T, k); n++; } return s / n; }
 function slopeAt(T, km) { const a = Math.max(0, km - 0.5), b = Math.min(T.total, km + 0.5); return b > a ? (smEle(T, b) - smEle(T, a)) / ((b - a) * 1000) * 100 : 0; }
+const _slopeCache = new WeakMap();
+function slopeSegs(T) {
+  let r = _slopeCache.get(T); if (r) return r;
+  const st = Math.max(0.4, T.total / 700); r = [];
+  for (let k = 0; k < T.total; k += st) { const b = Math.min(T.total, k + st), c = slopeCol(slopeAt(T, (k + b) / 2)); const l = r[r.length - 1]; if (l && l.c === c) l.b = b; else r.push({ a: k, b, c }); }
+  _slopeCache.set(T, r); return r;
+}
 const slopeCol = p => p < -0.5 ? '#60a5fa' : p < 3 ? '#34d399' : p < 6 ? '#fbbf24' : p < 9 ? '#fb923c' : '#ef4444';
 function renderProfile() {
   const el = $('#prof'); if (!el || !S.track) return;
@@ -619,11 +1065,12 @@ function renderMap() {
     '<div class="card prof" id="prof"></div>' +
     '<details class="hl"><summary>Légende et infos</summary><div>' +
     '<div class="legend"><span><b class="ar">➤</b> flèches = sens du vent</span><span><i class="dot" style="border-color:#ef4444"></i> face</span><span><i class="dot" style="border-color:#22c55e"></i> dos</span></div>' +
-    '<div class="legend"><span>Trajet = température :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div>' +
+    '<div class="legend"><span>Trajet = température (ou pente, au choix) :</span><span class="tbar"></span><span>0°</span><span>18°</span><span>32°+</span></div>' +
     '<div class="legend"><span><i class="dot" style="background:#3b82f680;border:0"></i> halo bleu = pluie (épaisseur = mm/h)</span></div>' +
     '<div class="leg"><span>Pente :</span><span><i style="background:#60a5fa"></i>descente</span><span><i style="background:#34d399"></i>&lt; 3 %</span><span><i style="background:#fbbf24"></i>3–6 %</span><span><i style="background:#fb923c"></i>6–9 %</span><span><i style="background:#ef4444"></i>&gt; 9 %</span><span><i style="background:#7c3aed"></i>étapes</span></div>' +
     '<div class="msg">Dénivelé + ' + Math.round(S.track.ascent) + ' m · distance ' + S.track.total.toFixed(0) + ' km. Fais glisser le curseur, touche le profil ou lance ▶ pour parcourir le trajet. Touche le tracé pour noter un passage.</div></div></details>' +
-    '<div class="card"><h2>Calques</h2><div class="chips">' + chip('wind', 'Vent') + chip('temp', 'Température') + chip('rain', 'Pluie') + '</div>' +
+    '<div class="card"><h2>Calques</h2><div class="chips">' + chip('wind', 'Vent') + chip('rain', 'Pluie') + '</div>' +
+    '<h2 style="margin-top:14px">Couleur du trajet</h2><div class="row2"><button class="' + (ui.routeCol === 'slope' ? 'b' : 'g') + '" data-rc="slope">⛰️ Pente</button><button class="' + (ui.routeCol === 'temp' ? 'b' : 'g') + '" data-rc="temp">🌡️ Température</button></div>' +
     '<h2 style="margin-top:14px">Moment affiché</h2><div class="row2"><button class="' + (hourMode ? 'g' : 'b') + '" data-act="mapmode-pass">À mon passage</button><button class="' + (hourMode ? 'b' : 'g') + '" data-act="mapmode-hour">Heure fixe</button></div>' +
     (hourMode ? '<label id="wxl">' + wxLabel() + '</label><input type="range" id="wxs" min="0" max="120" step="1" value="' + ui.mapOff + '">' : '<div class="msg">Chaque point montre la météo prévue à l’heure où tu devrais y passer.</div>') +
     '<div class="row2" style="margin-top:10px"><button class="g" data-act="mapfit-me">🎯 Devant moi</button><button class="g" data-act="mapfit-all">🗺️ Tout le parcours</button></div>' +
@@ -698,7 +1145,10 @@ function drawRoute() {
     const v = dense[i].v; if (!v || v.rain < 0.1) continue;
     L.polyline(segLatLngs(T, dense[i].km, dense[i + 1].km), { pane: 'rainPane', color: '#3b82f6', weight: Math.min(30, 12 + v.rain * 6), opacity: Math.min(.8, .3 + v.rain * .25), lineCap: 'round', interactive: false }).addTo(routeLayer);
   }
-  if (Ly.temp && haveW) {
+  if (ui.routeCol === 'slope') {
+    const sg = slopeSegs(T);
+    for (const g of sg) L.polyline(segLatLngs(T, g.a, g.b), { pane: 'routePane', color: g.c, weight: 5, opacity: rd && g.b <= rd.km ? .4 : .95, lineCap: 'butt', interactive: false }).addTo(routeLayer);
+  } else if (haveW) {
     for (let i = 0; i < dense.length - 1; i++) {
       const a = dense[i], v = a.v;
       L.polyline(segLatLngs(T, a.km, dense[i + 1].km), { pane: 'routePane', color: v ? tempColor(v.temp) : '#5b6b8c', weight: 5, opacity: rd && a.km < rd.km ? .45 : .95, lineCap: 'round', interactive: false }).addTo(routeLayer);
@@ -834,8 +1284,8 @@ function renderLog() {
 }
 
 // ===== Mode course (épuré) =====
-const hm = ms => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const dayS = ms => new Date(ms).toLocaleDateString('fr-FR', { weekday: 'short' });
+const hm = ms => new Date(ms).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' });
+const dayS = ms => new Date(ms).toLocaleDateString(LOC(), { weekday: 'short' });
 const mins = ms => { const m = Math.round(Math.abs(ms) / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + pad(m % 60); };
 const IC = {
   pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
@@ -951,26 +1401,15 @@ function applyTheme() {
 }
 function renderSettings() {
   const m = (G.set && G.set.theme) || 'auto', o = (v, l, d) => '<button data-theme="' + v + '" class="topt' + (m === v ? ' on' : '') + '"><b>' + l + '</b><span>' + d + '</span></button>';
-  return '<button class="g" data-act="set-off" style="justify-self:start">‹ Retour</button><div class="card"><h2>Apparence</h2><div class="topts">' +
+  return '<button class="g" data-act="set-off" style="justify-self:start">‹ Retour</button>' + renderLangCard() + '<div class="card"><h2>Apparence</h2><div class="topts">' +
     o('auto', 'Automatique', 'Nuit entre le coucher et le lever du soleil (selon ton parcours)') + o('system', 'Réglage du téléphone', 'Suit le mode sombre / clair d’Android') + o('day', 'Jour', 'Toujours clair') + o('night', 'Nuit', 'Toujours sombre') +
     '</div><div class="msg">Actuellement : ' + (isNight() ? 'nuit 🌙' : 'jour ☀️') + '</div></div><div class="card"><h2>Sauvegarde (tous les circuits)</h2><div class="row2"><button class="g" data-act="export">Exporter</button><button class="g" data-act="import">Importer</button></div><div class="msg">' + (memOnly ? '⚠️ Stockage local indisponible : les données seront perdues à la fermeture.' : 'Les données restent sur ce téléphone. L’export est une copie de sécurité (traces GPX comprises), à partager vers Drive ou par mail. L’import fusionne avec tes circuits actuels.') + '</div></div><div class="card"><button class="g" data-act="help-on" style="width:100%">❓ Aide / manuel</button></div>';
 }
 // ===== Aide intégrée =====
 function renderHelp() {
-  const sec = (t, b, open) => '<details class="hl"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div>' + b + '</div></details>';
-  return '<button class="g" data-act="help-off" style="justify-self:start">‹ Retour</button><div class="card"><h2>Aide · MyBikePlanner</h2><div class="msg" style="margin:0">Suivre une sortie (PBP, BRM…) par rapport au planning prévu. Tout reste sur ce téléphone : aucun compte, aucun serveur. Touche un titre pour déplier.</div></div>' +
-    sec('🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). La limite est <b>facultative</b> : dans Plan, l’interrupteur « Limite horaire » l’active ou non (par défaut : activée pour BRM/PBP, désactivée pour une sortie libre).</p>', true) +
-    sec('🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>') +
-    sec('📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>') +
-    sec('🗺️ Onglet Plan', '<ul><li><b>Départ</b> : heure de départ. L’interrupteur <b>Limite horaire</b> active ou non un temps maximum (activé par défaut pour un BRM ou un PBP, désactivé pour une sortie libre) ; activé, il affiche marge et vitesse minimale.</li><li><b>Étapes</b> : pour chaque contrôle, le <b>nom (touche-le : le texte est sélectionné, ou ✕ pour l’effacer, puis tape le nouveau)</b>, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>') +
-    sec('📍 Suivre en course', '<p><b>Position GPS</b> : l’app lit ta position à l’ouverture ou quand tu touches le bouton, la projette sur la trace et enregistre un point. Il n’y a <b>aucun suivi en arrière-plan</b> : la batterie est préservée.</p><p><b>Saisir un passage</b> : pour noter à la main l’heure à laquelle tu es passé à un contrôle (heure exacte). Utile sans réseau GPS ou pour corriger.</p><p>L’écran d’accueil du circuit indique l’<b>avance / le retard</b> sur le prévu, la marge sur la limite, la vitesse minimale pour tenir le délai et les prochains passages recalculés.</p>') +
-    sec('🏁 Mode course (affichage épuré)', '<p>Bouton « 🏁 Mode course » en haut de l’Accueil du circuit. Pensé pour la fatigue : gros chiffres, un seul bouton.</p><ul><li><b>Course</b> : avance/retard, prochaine étape (km, heure estimée, heure prévue), reste et arrivée. Le bouton <b>« Je suis à l’étape »</b> ouvre le pointage ; l’icône cible (en haut à droite) met à jour le GPS.</li><li><b>Étapes</b> : feuille de route, la prochaine est encadrée.</li><li><b>Météo</b> : température, pluie et vent aux prochaines étapes.</li><li><b>Pointage</b> : l’heure est proposée, ajuste avec −5 / +5 min, puis <b>Valider</b>.</li><li><b>Détails</b> : retour à l’app complète.</li></ul><p>Sans étapes intermédiaires, l’écran se simplifie et le gros bouton devient « Ma position ».</p>') +
-    sec('📋 Onglet Route (feuille de route)', '<p>Tableau <b>prévu / réel / écart ±</b>. Les passages déjà effectués utilisent l’heure réelle (exacte si saisie à la main, « ≈ » si interpolée). Les suivants affichent une estimation en italique.</p>') +
-    sec('🌦️ Carte et météo', '<ul><li><b>Flèches</b> le long du tracé : sens du vent (vers où il souffle). <span style="color:#ef4444">Rouge</span> = de face, <span style="color:#22c55e">vert</span> = dans le dos, gris = de côté. Touche une flèche pour le détail.</li><li><b>Couleur du trajet</b> = température (bleu froid → rouge chaud). <b>Halo bleu</b> = pluie, plus épais si plus fort.</li><li><b>Calques</b> : Vent, Température, Pluie activables séparément.</li><li><b>Moment affiché</b> : « À mon passage » (météo à l’heure prévue de passage en chaque point) ou « Heure fixe » avec curseur.</li><li><b>Noter un passage depuis la carte</b> : touche le tracé, puis « Noter un passage ici » ; le kilomètre est prérempli, tu ajustes l’heure et tu enregistres. <b>Devant moi / Tout le parcours</b> : cadrage. Les étapes sont les points violets étiquetés.</li><li><b>Profil d’altitude</b> sous la carte : pente en couleur, étapes en pointillés violets, ta position (orange). Le <b>curseur</b> (ou ▶ pour « jouer » le parcours, ×1 à ×8) déplace un point sur la carte et affiche km, altitude, pente, heure de passage et D+ restant. Touche ou fais glisser le profil pour aller à un endroit.</li><li><b>Courbes</b> sous la carte : température et ressentie, précipitations (probabilité, intensité) et nuages, vent et rafales, altitude, en fonction de l’heure de passage.</li></ul><p>Les prévisions viennent d’Open-Meteo et ne portent que sur <b>7 jours</b> : pour un départ plus lointain, elles apparaissent à l’approche. Hors ligne, les dernières données reçues restent affichées.</p><p>Le fond de carte (OpenStreetMap) est facultatif : décoche-le pour économiser les données ; le tracé reste visible.</p>') +
-    sec('💾 Sauvegarde et données', '<p>⚙ Réglages → <b>Exporter</b> crée un fichier de sauvegarde de tous les circuits (traces comprises) et ouvre le partage Android : enregistre-le dans Drive, envoie-le par mail ou vers tes fichiers. <b>Importer</b> fusionne le fichier avec tes circuits actuels (un circuit de même identifiant est remplacé).</p><p>Les données sont stockées dans l’app. Désinstaller l’app les efface : fais un export avant. Mettre à jour l’APK par-dessus l’ancien les conserve.</p>') +
-    sec('🌗 Jour / nuit', '<p>Bouton <b>⚙</b> en haut : choisis <b>Automatique</b> (nuit entre coucher et lever du soleil, calculés d’après ton parcours), <b>Réglage du téléphone</b>, <b>Jour</b> ou <b>Nuit</b>.</p>') +
-    sec('🛟 Dépannage', '<ul><li><b>« Autorisation refusée »</b> : active la localisation pour l’app dans les réglages Android.</li><li><b>« Position à X km du parcours : non enregistrée »</b> : tu es hors tolérance. Augmente la tolérance dans Plan, ou saisis le passage à la main.</li><li><b>« Avant le départ »</b> : la position n’est enregistrée qu’à partir de 30 min avant l’heure de départ.</li><li><b>Météo indisponible</b> : pas de réseau ; réessaie avec « ↻ Actualiser ».</li><li><b>Départ modifié mais heures inchangées</b> : touche « ↻ Actualiser » dans Météo.</li><li><b>Bouton retour Android</b> : revient à la liste des circuits.</li></ul>') +
-    '<div class="msg" style="text-align:center">MyBikePlanner · usage personnel · estimations indicatives, pas un chronométrage officiel.</div>';
+  const H = HELP[LANG] || HELP.fr, sec = (t, b, open) => '<details class="hl"' + (open ? ' open' : '') + '><summary>' + t + '</summary><div>' + b + '</div></details>';
+  return '<div data-nt><button class="g" data-act="help-off" style="justify-self:start">' + H.back + '</button><div class="card"><h2>' + H.title + '</h2><div class="msg" style="margin:0">' + H.intro + '</div></div>' +
+    H.secs.map(x => sec(x[0], x[1], x[2])).join('') + '<div class="msg" style="text-align:center">' + H.foot + '</div></div>';
 }
 
 // ===== Rendu général =====
@@ -981,6 +1420,7 @@ function renderHeader() {
     : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small><button class="g hbtn" data-act="set-on" aria-label="Réglages">⚙</button><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>';
 }
 function render() {
+  if (!G.set.lang) { document.body.classList.remove('race'); $('#hdr').style.display = 'none'; $('#nav').style.display = 'none'; $('#dock').style.display = 'none'; $('#app').innerHTML = renderLangPick(); return; }
   applyTheme();
   stopPlay(); curMark = null;
   if (mapObj) { ui.mapView = { c: mapObj.getCenter(), z: mapObj.getZoom() }; mapObj.remove(); mapObj = null; wxLayer = null; routeLayer = null; arrowLayer = null; }
@@ -1001,7 +1441,7 @@ async function exportData() {
   if (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.Filesystem && C.Plugins.Share) {
     try {
       const r = await C.Plugins.Filesystem.writeFile({ path: name, data: json, directory: 'CACHE', encoding: 'utf8' });
-      await C.Plugins.Share.share({ title: 'Sauvegarde MyBikePlanner', files: [r.uri], dialogTitle: 'Enregistrer ou envoyer la sauvegarde' });
+      await C.Plugins.Share.share({ title: tr('Sauvegarde MyBikePlanner'), files: [r.uri], dialogTitle: tr('Enregistrer ou envoyer la sauvegarde') });
     } catch (e) { if (!/cancel/i.test(String(e && e.message || e))) alert('Export impossible : ' + (e && e.message || e)); }
     return;
   }
@@ -1083,6 +1523,8 @@ function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render();
 
 document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
+  const lg = e.target.closest('[data-lang]'); if (lg) { setLang(lg.dataset.lang); return; }
+  const rc = e.target.closest('[data-rc]'); if (rc) { ui.routeCol = rc.dataset.rc; document.querySelectorAll('[data-rc]').forEach(b => b.className = b.dataset.rc === ui.routeCol ? 'b' : 'g'); drawRoute(); return; }
   const th = e.target.closest('[data-theme]'); if (th) { G.set.theme = th.dataset.theme; save(); render(); return; }
   const cl = e.target.closest('[data-clr]'); if (cl) { const i = cl.parentNode.querySelector('input'); i.value = ''; i.focus(); return; }
   const rt = e.target.closest('[data-rt]'); if (rt) { ui.rtab = rt.dataset.rt; render(); if (ui.rtab === 'wx') refreshWeather(false); return; }
@@ -1169,7 +1611,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'jsonfile' && t.files[0]) t.files[0].text().then(x => {
     try {
       const j = JSON.parse(x);
-      if (j.v === 2 && Array.isArray(j.rides)) { let n = 0; if (j.set && j.set.theme) G.set = j.set; for (const r of j.rides) { unpackRide(r); const i = G.rides.findIndex(x => x.id === r.id); if (i >= 0) G.rides[i] = r; else G.rides.push(r); n++; } S = null; G.cur = null; save(); render(); alert(n + ' circuit(s) importé(s).'); } else alert('Fichier de sauvegarde non reconnu.');
+      if (j.v === 2 && Array.isArray(j.rides)) { let n = 0; if (j.set && (j.set.theme || j.set.lang)) G.set = Object.assign({}, G.set, j.set); for (const r of j.rides) { unpackRide(r); const i = G.rides.findIndex(x => x.id === r.id); if (i >= 0) G.rides[i] = r; else G.rides.push(r); n++; } S = null; G.cur = null; save(); render(); alert(n + ' circuit(s) importé(s).'); } else alert('Fichier de sauvegarde non reconnu.');
     } catch (er) { alert('Fichier invalide.'); }
   });
   else if (t.id === 'uselim') { S.useLimit = t.checked; save(); render(); }
@@ -1193,7 +1635,7 @@ document.addEventListener('change', e => {
 window.addEventListener('popstate', () => { if (ui.settings) { ui.settings = false; render(); return; } if (ui.help) { ui.help = false; render(); return; } if (S) goHome(); });
 
 (async function init() {
-  await load(); render();
+  await load(); i18nStart(); render(); trAll(document.body);
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor) navigator.serviceWorker.register('sw.js'); } catch (e) {}
   if (S) { try { history.pushState({ r: 1 }, ''); } catch (e) {} if (S.track) { updateGPS(true); refreshWeather(false); } }
   setInterval(() => { if (!document.hidden && !ui.manual && (!S || ui.tab === 'dash' || ui.tab === 'route' || (S.raceMode && ui.rtab !== 'punch'))) render(); }, 60000);
