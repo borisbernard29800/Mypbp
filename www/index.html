@@ -115,9 +115,38 @@ body.race{background:var(--rbg);padding-bottom:calc(100px + env(safe-area-inset-
 .ch{width:100%;height:auto;display:block}.ch text{fill:#8b9ab8;font:10px system-ui}
 .wa{background:none;border:none}
 .leaflet-rainPane-pane{pointer-events:none}
+#splash{position:fixed;inset:0;z-index:9999;background:#0b1220 url(splash.jpg) center/cover no-repeat;transition:opacity .6s}
+#splash.out{opacity:0;pointer-events:none}
+.drw-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;opacity:0;pointer-events:none;transition:opacity .25s}
+.drw-bg.on{opacity:1;pointer-events:auto}
+.drw{position:fixed;top:0;bottom:0;left:0;width:82%;max-width:320px;background:var(--bg);z-index:901;transform:translateX(-105%);transition:transform .25s;display:flex;flex-direction:column;overflow-y:auto;box-shadow:4px 0 24px rgba(0,0,0,.4)}
+.drw.on{transform:none}
+.dh{padding:34px 20px 18px;background:linear-gradient(135deg,#1e3a8a,#0b1220);color:#fff;display:flex;flex-direction:column;gap:6px}
+.dh b{font-size:20px}.dh span{font-size:13px;opacity:.75}.dh .lg{display:flex;width:44px;height:44px}
+.dit{display:flex;align-items:center;gap:16px;padding:15px 20px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--tx);font:600 16px system-ui,sans-serif;width:100%;text-align:left}
+.dit .di{width:26px;text-align:center;font-size:20px}
+.dab{padding:14px 20px;font-size:14px;color:var(--mut);line-height:1.45}
+#app>*{min-width:0}.hw{overflow:hidden;border-radius:20px;padding:16px;background:linear-gradient(160deg,#1d4ed8,#0b1220);color:#fff;margin-bottom:12px}
+.hw .hp{font-size:14px;opacity:.85;display:flex;justify-content:space-between;gap:8px}
+.hw .hbig{display:flex;align-items:center;gap:12px;margin:6px 0}
+.hw .ht{font-size:56px;font-weight:300;line-height:1}.hw .hi{font-size:44px}
+.hw .hs{font-size:14px;opacity:.9;display:flex;gap:14px;flex-wrap:wrap}
+.hw .hh{display:flex;gap:14px;overflow-x:auto;margin-top:12px;padding-bottom:4px}
+.hw .hh div{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;font-size:13px}
+.hw .hh i{font-style:normal;font-size:22px}
+.hw .hmsg{margin-top:8px;font-size:13px;opacity:.85}
+.hw button.g{margin-top:8px}
+.imt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.imt button{padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font:700 15px system-ui,sans-serif}
+.imt button.on{border-color:var(--acc);background:var(--card)}
+.imh ol{margin:8px 0 8px 18px;padding:0;font-size:14px;line-height:1.5}
+.imh .row2{margin-top:8px}
+
 </style>
 </head>
 <body>
+<div id="splash"></div>
+<div class="drw-bg" id="drwbg" data-act="drw-off"></div><aside class="drw" id="drw"></aside>
 <header id="hdr"></header>
 <nav id="nav">
   <button data-tab="dash">Accueil</button>
@@ -344,6 +373,32 @@ function windInfo(speed, from, bearing) {
 // ==/CORE==
 // ===== I18N : dictionnaire FR → EN / ES / DE (phrases les plus longues d’abord à l’application) =====
 const TR = [
+  // — accueil enrichi (menu, météo, import)
+  ['Menu', 'Menu', 'Menú', 'Menü'],
+  ['Position actuelle', 'Current location', 'Ubicación actual', 'Aktueller Standort'],
+  ['Ressenti', 'Feels like', 'Sensación', 'Gefühlt'],
+  ['Chargement de la météo…', 'Loading weather…', 'Cargando el tiempo…', 'Wetter wird geladen …'],
+  ['Météo indisponible hors connexion.', 'Weather unavailable offline.', 'Tiempo no disponible sin conexión.', 'Wetter offline nicht verfügbar.'],
+  ['Autoriser la position pour afficher la météo.', 'Allow location to show the weather.', 'Permite la ubicación para ver el tiempo.', 'Standort erlauben, um das Wetter anzuzeigen.'],
+  ['Météo hors connexion.', 'Offline weather (last update).', 'Tiempo sin conexión (última actualización).', 'Offline-Wetter (letzte Aktualisierung).'],
+  ['Récupérer un tracé', 'Get a route', 'Obtener un recorrido', 'Strecke holen'],
+  ['Exporte le GPX depuis ton compte, puis choisis-le ici.', 'Export the GPX from your account, then pick it here.', 'Exporta el GPX desde tu cuenta y elígelo aquí.', 'Exportiere die GPX aus deinem Konto und wähle sie hier aus.'],
+  ['Sur strava.com, ouvre Routes puis ta route.', 'On strava.com, open Routes, then your route.', 'En strava.com, abre Rutas y luego tu ruta.', 'Öffne auf strava.com Routen und dann deine Route.'],
+  ['Touche « … » puis « Exporter le GPX » (routes et activités).', 'Tap “…” then “Export GPX” (routes and activities).', 'Toca «…» y luego «Exportar GPX» (rutas y actividades).', 'Tippe auf „…“ und dann „GPX exportieren“ (Routen und Aktivitäten).'],
+  ['Sur komoot.com (navigateur), ouvre ton tracé.', 'On komoot.com (browser), open your tour.', 'En komoot.com (navegador), abre tu recorrido.', 'Öffne auf komoot.com (Browser) deine Tour.'],
+  ['Touche « … » puis « Télécharger le GPX ».', 'Tap “…” then “Download GPX”.', 'Toca «…» y luego «Descargar GPX».', 'Tippe auf „…“ und dann „GPX herunterladen“.'],
+  ['Sur connect.garmin.com, ouvre Entraînement → Parcours.', 'On connect.garmin.com, open Training → Courses.', 'En connect.garmin.com, abre Entrenamiento → Recorridos.', 'Öffne auf connect.garmin.com Training → Kurse.'],
+  ['Ouvre le parcours, touche ⚙ puis « Exporter vers GPX ».', 'Open the course, tap ⚙ then “Export to GPX”.', 'Abre el recorrido, toca ⚙ y luego «Exportar a GPX».', 'Öffne den Kurs, tippe auf ⚙ und dann „Als GPX exportieren“.'],
+  ['Sur ridewithgps.com, ouvre ta route.', 'On ridewithgps.com, open your route.', 'En ridewithgps.com, abre tu ruta.', 'Öffne auf ridewithgps.com deine Route.'],
+  ['Touche « Plus » puis « Exporter » → GPX Track.', 'Tap “More” then “Export” → GPX Track.', 'Toca «Más» y luego «Exportar» → GPX Track.', 'Tippe auf „Mehr“ und dann „Exportieren“ → GPX Track.'],
+  ['Reviens ici et touche « Choisir le fichier GPX » : le fichier est dans Téléchargements.', 'Come back here and tap “Choose the GPX file”: it is in Downloads.', 'Vuelve aquí y toca «Elegir el archivo GPX»: está en Descargas.', 'Komm hierher zurück und tippe auf „GPX-Datei wählen“: Sie liegt in Downloads.'],
+  ['Ouvrir le site', 'Open the site', 'Abrir el sitio', 'Seite öffnen'],
+  ['Choisir le fichier GPX', 'Choose the GPX file', 'Elegir el archivo GPX', 'GPX-Datei wählen'],
+  ['Strava, Komoot et Garmin ne permettent pas à une application locale de lire ton compte sans serveur ni accord partenaire : l’export GPX fonctionne avec les trois.', 'Strava, Komoot and Garmin do not let a local app read your account without a server or partner agreement: GPX export works with all three.', 'Strava, Komoot y Garmin no permiten que una app local lea tu cuenta sin servidor ni acuerdo de socio: la exportación GPX funciona con los tres.', 'Strava, Komoot und Garmin erlauben einer lokalen App keinen Kontozugriff ohne Server oder Partnervertrag: Der GPX-Export funktioniert mit allen dreien.'],
+  ['Suivi de sortie vélo, 100 % sur ton téléphone', 'Ride tracking, 100% on your phone', 'Seguimiento de salidas en bici, 100 % en tu teléfono', 'Rad-Tourenverfolgung, 100 % auf deinem Telefon'],
+  ['Importer un tracé GPX', 'Import a GPX route', 'Importar un recorrido GPX', 'GPX-Strecke importieren'],
+  ['À propos', 'About', 'Acerca de', 'Über'],
+  ['MyBikePlanner suit ta sortie par rapport au planning prévu. Toutes les données restent sur ton téléphone ; seule la météo est récupérée en ligne (Open-Meteo).', 'MyBikePlanner tracks your ride against the planned schedule. All data stays on your phone; only the weather is fetched online (Open-Meteo).', 'MyBikePlanner sigue tu salida respecto al plan previsto. Todos los datos se quedan en tu teléfono; solo el tiempo se obtiene en línea (Open-Meteo).', 'MyBikePlanner verfolgt deine Tour gegenüber dem geplanten Zeitplan. Alle Daten bleiben auf deinem Telefon; nur das Wetter wird online abgerufen (Open-Meteo).'],
   // — navigation / en-têtes
   ['Accueil', 'Home', 'Inicio', 'Start'],
   ['Route', 'Route', 'Ruta', 'Route'],
@@ -655,6 +710,7 @@ fr: { back: '‹ Retour', title: 'Aide · MyBikePlanner', intro: 'Suivre une sor
  secs: [
   ['🚀 Démarrer en 3 étapes', '<ol><li><b>Importe un GPX</b> : « ＋ Nouveau circuit » sur l’accueil, ou depuis l’Agenda (« Planifier une sortie »).</li><li>Dans l’onglet <b>Plan</b>, choisis le <b>type</b> (Sortie libre, BRM ou PBP), la <b>date et l’heure de départ</b>, puis les vitesses.</li><li>Le jour J, ouvre l’app et touche <b>📍 Position GPS</b>.</li></ol><p>Le type n’est jamais deviné : c’est toi qui le choisis. Il règle le délai maximum (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h ; PBP = 90 h). La limite est <b>facultative</b> : dans Plan, l’interrupteur « Limite horaire » l’active ou non (par défaut : activée pour BRM/PBP, désactivée pour une sortie libre).</p>', true],
   ['🏠 Accueil et circuits', '<p>Chaque carte est un circuit (distance, dénivelé, limite, état). Touche-la pour l’ouvrir. L’icône 🗑 la supprime après confirmation.</p><p>Les circuits à venir sont classés par date de départ, les terminés en bas.</p>'],
+  ['🌤️ Menu, météo et import', '<p><b>☰</b> (en haut à gauche) ouvre le menu : Circuits, Agenda, import GPX, Réglages, Aide, À propos.</p><p>L’accueil affiche la météo de ta position (relevée à l’ouverture de l’appli, avec les prochaines heures). Hors connexion, la dernière météo est conservée.</p><p><b>Récupérer un tracé</b> : touche Strava, Komoot, Garmin ou Ride with GPS pour voir comment exporter le GPX, puis « Choisir le fichier GPX ». Une connexion directe au compte n’est pas possible sans serveur.</p>'],
   ['📅 Agenda', '<p>Le calendrier montre un point par sortie (bleu BRM, orange PBP, vert sortie libre). Touche un jour pour voir ses sorties, « tout voir » pour revenir à la liste.</p><p><b>Planifier une sortie</b> : choisis la date, le type, puis « Nouveau GPX… » ou la copie d’un circuit déjà importé (pratique pour un parcours refait plusieurs fois). La copie repart sans positions ni météo.</p>'],
   ['🗺️ Onglet Plan', '<ul><li><b>Départ</b> : heure de départ. L’interrupteur <b>Limite horaire</b> active ou non un temps maximum (activé par défaut pour un BRM ou un PBP, désactivé pour une sortie libre) ; activé, il affiche marge et vitesse minimale.</li><li><b>Étapes</b> : pour chaque contrôle, la <b>distance depuis l’étape précédente</b> (+ X km sous le nom), le <b>nom (touche-le : le texte est sélectionné, ou ✕ pour l’effacer, puis tape le nouveau)</b>, le km, la <b>vitesse moyenne roulante</b> pour le rejoindre depuis le précédent, et l’<b>arrêt</b> en minutes (90 min ou plus = sommeil 🌙).</li><li><b>Même vitesse</b> : applique une vitesse à toutes les étapes d’un coup.</li><li><b>Tolérance GPS</b> : distance maximale entre toi et la trace pour enregistrer ta position (3 km par défaut ; mets 10 km pour un test en train).</li><li><b>Projection de l’arrivée</b> : « plan décalé de mon écart » ou « au rythme réel constaté ».</li><li><b>Dupliquer / Supprimer</b> le circuit.</li></ul>'],
   ['📍 Suivre en course', '<p><b>Position GPS</b> : l’app lit ta position à l’ouverture ou quand tu touches le bouton, la projette sur la trace et enregistre un point. Il n’y a <b>aucun suivi en arrière-plan</b> : la batterie est préservée.</p><p><b>Saisir un passage</b> : pour noter à la main l’heure à laquelle tu es passé à un contrôle (heure exacte). Utile sans réseau GPS ou pour corriger.</p><p>L’écran d’accueil du circuit indique l’<b>avance / le retard</b> sur le prévu, la marge sur la limite, la vitesse minimale pour tenir le délai et les prochains passages recalculés.</p>'],
@@ -671,6 +727,7 @@ en: { back: '‹ Back', title: 'Help · MyBikePlanner', intro: 'Follow a ride (P
  secs: [
   ['🚀 Get started in 3 steps', '<ol><li><b>Import a GPX</b>: “＋ New ride” on the home screen, or from the Calendar (“Plan a ride”).</li><li>In the <b>Plan</b> tab, choose the <b>type</b> (Free ride, BRM or PBP), the <b>start date and time</b>, then the speeds.</li><li>On the day, open the app and tap <b>📍 GPS position</b>.</li></ol><p>The type is never guessed: you choose it. It sets the maximum time (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). The limit is <b>optional</b>: in Plan, the “Time limit” switch turns it on or off (default: on for BRM/PBP, off for a free ride).</p>', true],
   ['🏠 Home and rides', '<p>Each card is a ride (distance, climbing, limit, status). Tap it to open it. The 🗑 icon deletes it after confirmation.</p><p>Upcoming rides are sorted by start date, finished ones at the bottom.</p>'],
+  ['🌤️ Menu, weather and import', '<p><b>☰</b> (top left) opens the menu: Rides, Agenda, GPX import, Settings, Help, About.</p><p>The home screen shows the weather at your location (read when the app opens, with the next hours). Offline, the last weather is kept.</p><p><b>Get a route</b>: tap Strava, Komoot, Garmin or Ride with GPS to see how to export the GPX, then “Choose the GPX file”. A direct account connection is not possible without a server.</p>'],
   ['📅 Calendar', '<p>The calendar shows one dot per ride (blue BRM, orange PBP, green free ride). Tap a day to see its rides, “show all” to go back to the list.</p><p><b>Plan a ride</b>: choose the date, the type, then “New GPX…” or a copy of an already imported ride (handy for a route you ride several times). The copy starts without positions or weather.</p>'],
   ['🗺️ Plan tab', '<ul><li><b>Start</b>: start time. The <b>Time limit</b> switch turns a maximum time on or off (on by default for a BRM or PBP, off for a free ride); when on, it shows margin and minimum speed.</li><li><b>Stages</b>: for each control, the <b>distance from the previous stage</b> (+ X km under the name), the <b>name (tap it: the text is selected, or ✕ to clear it, then type the new one)</b>, the km, the <b>average moving speed</b> to reach it from the previous one, and the <b>stop</b> in minutes (90 min or more = sleep 🌙).</li><li><b>Same speed</b>: applies one speed to all stages at once.</li><li><b>GPS tolerance</b>: maximum distance between you and the track for your position to be recorded (3 km by default; use 10 km for a test on a train).</li><li><b>Finish projection</b>: “planned schedule shifted by my gap” or “at my actual pace”.</li><li><b>Duplicate / Delete</b> the ride.</li></ul>'],
   ['📍 Following a ride', '<p><b>GPS position</b>: the app reads your position when opened or when you tap the button, projects it onto the track and records a point. There is <b>no background tracking</b>: your battery is preserved.</p><p><b>Enter a passage</b>: to note by hand the time you passed a control (exact time). Useful without GPS signal or to correct.</p><p>The ride’s home screen shows your <b>lead / delay</b> against the plan, the margin on the limit, the minimum speed to meet the time limit and the recalculated next passages.</p>'],
@@ -687,6 +744,7 @@ es: { back: '‹ Volver', title: 'Ayuda · MyBikePlanner', intro: 'Sigue una sal
  secs: [
   ['🚀 Empezar en 3 pasos', '<ol><li><b>Importa un GPX</b>: «＋ Nuevo recorrido» en el inicio, o desde la Agenda («Planificar una salida»).</li><li>En la pestaña <b>Plan</b>, elige el <b>tipo</b> (Salida libre, BRM o PBP), la <b>fecha y hora de salida</b> y luego las velocidades.</li><li>El día D, abre la app y toca <b>📍 Posición GPS</b>.</li></ol><p>El tipo nunca se adivina: lo eliges tú. Fija el plazo máximo (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). El límite es <b>opcional</b>: en Plan, el interruptor «Límite horario» lo activa o no (por defecto: activado para BRM/PBP, desactivado para una salida libre).</p>', true],
   ['🏠 Inicio y recorridos', '<p>Cada tarjeta es un recorrido (distancia, desnivel, límite, estado). Tócala para abrirla. El icono 🗑 la elimina tras confirmación.</p><p>Los recorridos próximos se ordenan por fecha de salida, los terminados al final.</p>'],
+  ['🌤️ Menú, tiempo e importación', '<p><b>☰</b> (arriba a la izquierda) abre el menú: Recorridos, Agenda, importar GPX, Ajustes, Ayuda, Acerca de.</p><p>El inicio muestra el tiempo en tu ubicación (leída al abrir la app, con las próximas horas). Sin conexión se conserva el último tiempo.</p><p><b>Obtener un recorrido</b>: toca Strava, Komoot, Garmin o Ride with GPS para ver cómo exportar el GPX y luego «Elegir el archivo GPX». Una conexión directa a la cuenta no es posible sin servidor.</p>'],
   ['📅 Agenda', '<p>El calendario muestra un punto por salida (azul BRM, naranja PBP, verde salida libre). Toca un día para ver sus salidas, «ver todo» para volver a la lista.</p><p><b>Planificar una salida</b>: elige la fecha, el tipo y luego «Nuevo GPX…» o la copia de un recorrido ya importado (útil para un recorrido que repites). La copia empieza sin posiciones ni tiempo.</p>'],
   ['🗺️ Pestaña Plan', '<ul><li><b>Salida</b>: hora de salida. El interruptor <b>Límite horario</b> activa o no un tiempo máximo (activado por defecto para BRM o PBP, desactivado para una salida libre); activado, muestra margen y velocidad mínima.</li><li><b>Etapas</b>: para cada control, la <b>distancia desde la etapa anterior</b> (+ X km bajo el nombre), el <b>nombre (tócalo: el texto se selecciona, o ✕ para borrarlo, y escribe el nuevo)</b>, el km, la <b>velocidad media en marcha</b> para llegar desde el anterior y la <b>parada</b> en minutos (90 min o más = sueño 🌙).</li><li><b>Misma velocidad</b>: aplica una velocidad a todas las etapas de golpe.</li><li><b>Tolerancia GPS</b>: distancia máxima entre tú y el track para registrar tu posición (3 km por defecto; pon 10 km para una prueba en tren).</li><li><b>Proyección de la llegada</b>: «plan previsto desplazado por mi desfase» o «al ritmo real observado».</li><li><b>Duplicar / Eliminar</b> el recorrido.</li></ul>'],
   ['📍 Seguir en carrera', '<p><b>Posición GPS</b>: la app lee tu posición al abrirla o al tocar el botón, la proyecta sobre el track y registra un punto. <b>No hay seguimiento en segundo plano</b>: se preserva la batería.</p><p><b>Anotar un paso</b>: para apuntar a mano la hora a la que pasaste por un control (hora exacta). Útil sin señal GPS o para corregir.</p><p>La pantalla de inicio del recorrido indica tu <b>adelanto / retraso</b> sobre lo previsto, el margen sobre el límite, la velocidad mínima para cumplir el plazo y los próximos pasos recalculados.</p>'],
@@ -703,6 +761,7 @@ de: { back: '‹ Zurück', title: 'Hilfe · MyBikePlanner', intro: 'Verfolge ein
  secs: [
   ['🚀 In 3 Schritten starten', '<ol><li><b>GPX importieren</b>: „＋ Neue Tour“ auf dem Startbildschirm oder über den Kalender („Tour planen“).</li><li>Wähle im Reiter <b>Plan</b> den <b>Typ</b> (Freie Tour, BRM oder PBP), das <b>Startdatum und die Startzeit</b> und danach die Geschwindigkeiten.</li><li>Am Tag selbst öffnest du die App und tippst auf <b>📍 GPS-Position</b>.</li></ol><p>Der Typ wird nie erraten: Du wählst ihn. Er legt die Höchstzeit fest (BRM 200 = 13 h 30, 300 = 20 h, 400 = 27 h, 600 = 40 h, 1000 = 75 h; PBP = 90 h). Das Limit ist <b>optional</b>: In Plan schaltet der Schalter „Zeitlimit“ es ein oder aus (Standard: an für BRM/PBP, aus für eine freie Tour).</p>', true],
   ['🏠 Start und Touren', '<p>Jede Karte ist eine Tour (Entfernung, Höhenmeter, Limit, Status). Tippe darauf, um sie zu öffnen. Das Symbol 🗑 löscht sie nach Bestätigung.</p><p>Kommende Touren sind nach Startdatum sortiert, beendete stehen unten.</p>'],
+  ['🌤️ Menü, Wetter und Import', '<p><b>☰</b> (oben links) öffnet das Menü: Touren, Agenda, GPX-Import, Einstellungen, Hilfe, Über.</p><p>Der Startbildschirm zeigt das Wetter an deinem Standort (beim Öffnen der App gelesen, mit den nächsten Stunden). Offline bleibt das letzte Wetter erhalten.</p><p><b>Strecke holen</b>: Tippe auf Strava, Komoot, Garmin oder Ride with GPS, um den GPX-Export zu sehen, dann „GPX-Datei wählen“. Eine direkte Kontoverbindung ist ohne Server nicht möglich.</p>'],
   ['📅 Kalender', '<p>Der Kalender zeigt einen Punkt pro Tour (blau BRM, orange PBP, grün freie Tour). Tippe auf einen Tag, um seine Touren zu sehen, „alle anzeigen“ führt zur Liste zurück.</p><p><b>Tour planen</b>: Wähle Datum und Typ, dann „Neue GPX …“ oder die Kopie einer bereits importierten Tour (praktisch für eine mehrfach gefahrene Strecke). Die Kopie startet ohne Positionen und Wetter.</p>'],
   ['🗺️ Reiter Plan', '<ul><li><b>Start</b>: Startzeit. Der Schalter <b>Zeitlimit</b> schaltet eine Höchstzeit ein oder aus (Standard: an für BRM oder PBP, aus für eine freie Tour); wenn an, werden Reserve und Mindestgeschwindigkeit angezeigt.</li><li><b>Etappen</b>: für jede Kontrolle die <b>Entfernung ab der vorherigen Etappe</b> (+ X km unter dem Namen), der <b>Name (antippen: der Text wird markiert, oder ✕ zum Löschen, dann den neuen eingeben)</b>, der km, die <b>durchschnittliche Fahrgeschwindigkeit</b> ab der vorherigen Kontrolle und der <b>Halt</b> in Minuten (ab 90 min = Schlaf 🌙).</li><li><b>Gleiche Geschwindigkeit</b>: wendet eine Geschwindigkeit auf alle Etappen auf einmal an.</li><li><b>GPS-Toleranz</b>: maximale Entfernung zwischen dir und der Strecke, damit deine Position gespeichert wird (standardmäßig 3 km; für einen Test im Zug 10 km).</li><li><b>Ankunftsprognose</b>: „geplanter Ablauf, um meine Abweichung verschoben“ oder „mit meinem tatsächlichen Tempo“.</li><li><b>Duplizieren / Löschen</b> der Tour.</li></ul>'],
   ['📍 Unterwegs verfolgen', '<p><b>GPS-Position</b>: Die App liest deine Position beim Öffnen oder beim Tippen auf die Schaltfläche, projiziert sie auf die Strecke und speichert einen Punkt. Es gibt <b>keine Verfolgung im Hintergrund</b>: Der Akku wird geschont.</p><p><b>Durchfahrt eintragen</b>: um die Uhrzeit, zu der du eine Kontrolle passiert hast, von Hand zu notieren (genaue Zeit). Nützlich ohne GPS-Signal oder zum Korrigieren.</p><p>Der Startbildschirm der Tour zeigt deinen <b>Vorsprung / Rückstand</b> gegenüber dem Plan, die Reserve zum Limit, die Mindestgeschwindigkeit für das Zeitlimit und die neu berechneten nächsten Durchfahrten.</p>'],
@@ -865,10 +924,75 @@ function renderHome() {
     const ua = a.depMs + a.limitH * 3600e3 >= now, ub = b.depMs + b.limitH * 3600e3 >= now;
     return ua !== ub ? (ua ? -1 : 1) : ua ? a.depMs - b.depMs : b.depMs - a.depMs;
   });
-  h += '<button class="b" data-act="new" style="width:100%">＋ Nouveau circuit (importer un GPX)</button>';
+  h = renderHW() + h;
+  h += '<button class="b" data-act="new" style="width:100%">＋ Nouveau circuit (importer un GPX)</button>' + renderImport();
   if (!R.length) return h + '<div class="card empty">Aucun circuit pour l’instant.<br>Importe un fichier GPX (PBP, BRM, sortie…) pour commencer.</div>';
   return h + R.map(rideCard).join('') + (memOnly ? '<div class="msg">⚠️ Stockage local indisponible : les données seront perdues à la fermeture.</div>' : '');
 }
+
+const WXI = c => c === 0 ? '☀️' : c <= 2 ? '🌤️' : c === 3 ? '☁️' : c <= 48 ? '🌫️' : c <= 57 ? '🌦️' : c <= 67 ? '🌧️' : c <= 77 ? '❄️' : c <= 82 ? '🌦️' : '⛈️';
+function hwUse(d) { ui.hw = d; }
+async function homeWx(force) {
+  if (S || ui.hwBusy) return;
+  const c = G.set.hw; if (c && !ui.hw) ui.hw = c;
+  if (!force && ui.hw && Date.now() - ui.hw.at < 20 * 60e3) return;
+  if (!navigator.geolocation) { ui.hwErr = 'gps'; return; }
+  ui.hwBusy = true;
+  const done = () => { ui.hwBusy = false; if (!S && !ui.settings && !ui.help && !ui.drawer && ui.home === 'list') render(); };
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    try {
+      const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lon.toFixed(3) +
+        '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timeformat=unixtime&timezone=auto&forecast_days=2';
+      const j = await (await fetch(u)).json(), H = j.hourly, now = Math.floor(Date.now() / 1000);
+      const hrs = []; for (let i = 0; i < H.time.length && hrs.length < 12; i++) if (H.time[i] >= now - 1800) hrs.push({ t: H.time[i], c: H.weather_code[i], v: Math.round(H.temperature_2m[i]) });
+      let place = (ui.hw && ui.hw.place) || '';
+      try { const g = await (await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=' + LANG)).json(); place = g.city || g.locality || place; } catch (e) {}
+      ui.hw = { at: Date.now(), place, c: j.current.weather_code, t: Math.round(j.current.temperature_2m), f: Math.round(j.current.apparent_temperature), w: Math.round(j.current.wind_speed_10m), mx: Math.round(j.daily.temperature_2m_max[0]), mn: Math.round(j.daily.temperature_2m_min[0]), hrs };
+      G.set.hw = ui.hw; save(); ui.hwErr = '';
+    } catch (e) { ui.hwErr = 'net'; }
+    done();
+  }, () => { ui.hwErr = 'gps'; done(); }, { timeout: 15000, maximumAge: 300000 });
+}
+function renderHW() {
+  const w = ui.hw;
+  if (!w) return '<div class="hw"><div class="hp"><span>Position actuelle</span><span>' + fmtDT(Date.now()) + '</span></div>' +
+    (ui.hwBusy ? '<div class="hmsg">Chargement de la météo…</div>' : '<div class="hmsg">' + (ui.hwErr === 'net' ? 'Météo indisponible hors connexion.' : 'Autoriser la position pour afficher la météo.') + '</div><button class="g" data-act="hw-refresh">Actualiser</button>') + '</div>';
+  return '<div class="hw"><div class="hp"><span>' + esc(w.place || 'Position actuelle') + '</span><span>' + fmtDT(Date.now()) + '</span></div>' +
+    '<div class="hbig"><span class="ht">' + w.t + '°</span><span class="hi">' + WXI(w.c) + '</span></div>' +
+    '<div class="hs"><span>Ressenti</span><span>' + w.f + '°</span><span>↑ ' + w.mx + '°</span><span>↓ ' + w.mn + '°</span><span>💨 ' + w.w + ' km/h</span></div>' +
+    '<div class="hh">' + w.hrs.map(h => '<div><span>' + new Date(h.t * 1000).getHours() + ' h</span><i>' + WXI(h.c) + '</i><b>' + h.v + '°</b></div>').join('') + '</div>' +
+    (Date.now() - w.at > 3 * 3600e3 ? '<div class="hmsg">Météo hors connexion.</div>' : '') +
+    '<button class="g" data-act="hw-refresh">Actualiser</button></div>';
+}
+const IMP = {
+  strava: { n: 'Strava', u: 'https://www.strava.com/athlete/routes', s: ['Sur strava.com, ouvre Routes puis ta route.', 'Touche « … » puis « Exporter le GPX » (routes et activités).'] },
+  komoot: { n: 'Komoot', u: 'https://www.komoot.com/', s: ['Sur komoot.com (navigateur), ouvre ton tracé.', 'Touche « … » puis « Télécharger le GPX ».'] },
+  garmin: { n: 'Garmin', u: 'https://connect.garmin.com/modern/courses', s: ['Sur connect.garmin.com, ouvre Entraînement → Parcours.', 'Ouvre le parcours, touche ⚙ puis « Exporter vers GPX ».'] },
+  rwgps: { n: 'Ride with GPS', u: 'https://ridewithgps.com/routes', s: ['Sur ridewithgps.com, ouvre ta route.', 'Touche « Plus » puis « Exporter » → GPX Track.'] }
+};
+function renderImport() {
+  const k = ui.imp, I = IMP[k];
+  let h = '<div class="card"><h2>Récupérer un tracé</h2><div class="msg" style="margin:0">Exporte le GPX depuis ton compte, puis choisis-le ici.</div><div class="imt">' +
+    Object.keys(IMP).map(x => '<button data-imp="' + x + '" class="' + (k === x ? 'on' : '') + '">' + IMP[x].n + '</button>').join('') + '</div>';
+  if (I) h += '<div class="imh"><ol>' + I.s.map(t => '<li>' + t + '</li>').join('') + '<li>Reviens ici et touche « Choisir le fichier GPX » : le fichier est dans Téléchargements.</li></ol>' +
+    '<div class="row2"><a class="b" href="' + I.u + '" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--acc);color:#07111f;border-radius:12px;font-weight:700;padding:10px">Ouvrir le site</a><button class="g" data-act="new">Choisir le fichier GPX</button></div>' +
+    '<div class="msg">Strava, Komoot et Garmin ne permettent pas à une application locale de lire ton compte sans serveur ni accord partenaire : l’export GPX fonctionne avec les trois.</div></div>';
+  return h + '</div>';
+}
+function renderDrawer() {
+  const it = (ic, t, to) => '<button class="dit" data-act="drw-go" data-to="' + to + '"><span class="di">' + ic + '</span><span>' + t + '</span></button>';
+  $('#drw').innerHTML = '<div class="dh"><span class="lg">' + LOGO + '</span><b>MyBikePlanner</b><span>Suivi de sortie vélo, 100 % sur ton téléphone</span></div>' +
+    it('🚲', 'Circuits', 'home') + it('📅', 'Agenda', 'agenda') + it('📥', 'Importer un tracé GPX', 'new') + it('⚙', 'Réglages', 'set') + it('❓', 'Aide', 'help') + it('ℹ️', 'À propos', 'about') +
+    (ui.about ? '<div class="dab">MyBikePlanner suit ta sortie par rapport au planning prévu. Toutes les données restent sur ton téléphone ; seule la météo est récupérée en ligne (Open-Meteo).</div>' : '');
+  $('#drw').classList.toggle('on', !!ui.drawer); $('#drwbg').classList.toggle('on', !!ui.drawer);
+}
+function drwClose(after) {
+  ui.afterPop = after || null;
+  if (history.state && history.state.d) history.back();
+  else { ui.drawer = false; renderDrawer(); const f = ui.afterPop; ui.afterPop = null; f && f(); }
+}
+function hideSplash() { const e = document.getElementById('splash'); if (!e) return; e.classList.add('out'); setTimeout(() => e.remove(), 700); }
 function renderAgenda() {
   const now = new Date(), c = ui.cal || (ui.cal = { y: now.getFullYear(), m: now.getMonth() });
   const first = new Date(c.y, c.m, 1), lead = (first.getDay() + 6) % 7, dim = new Date(c.y, c.m + 1, 0).getDate();
@@ -1423,9 +1547,10 @@ function renderHeader() {
   if (S && S.raceMode && S.track && !ui.help && !ui.settings) return;
   $('#hdr').innerHTML = S
     ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small><button class="g hbtn" data-act="set-on" aria-label="Réglages">⚙</button><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>'
-    : '<span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><small>' + fmtDT(Date.now()) + '</small><button class="g hbtn" data-act="set-on" aria-label="Réglages">⚙</button><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>';
+    : '<button class="g hbtn" data-act="drw-on" aria-label="Menu">☰</button><span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1><button class="g hbtn" data-act="set-on" aria-label="Réglages">⚙</button><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>';
 }
 function render() {
+  renderDrawer();
   if (!G.set.lang) { document.body.classList.remove('race'); $('#hdr').style.display = 'none'; $('#nav').style.display = 'none'; $('#dock').style.display = 'none'; $('#app').innerHTML = renderLangPick(); return; }
   applyTheme();
   stopPlay(); curMark = null;
@@ -1525,7 +1650,7 @@ function openRide(id) {
   render();
   if (S.track) { updateGPS(true); refreshWeather(false); }
 }
-function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render(); }
+function goHome() { S = null; G.cur = null; ui.mapView = null; save(); render(); homeWx(false); }
 
 document.addEventListener('click', e => {
   const tab = e.target.closest('[data-tab]'); if (tab) { ui.tab = tab.dataset.tab; ui.manual = false; ui.mapView = ui.tab === 'map' ? ui.mapView : null; render(); return; }
@@ -1542,10 +1667,25 @@ document.addEventListener('click', e => {
   const op = e.target.closest('[data-open]'); if (op) { openRide(op.dataset.open); return; }
   const del = e.target.closest('[data-del]'); if (del) { S.log = S.log.filter(r => r.t !== +del.dataset.del); save(); render(); return; }
   const rm = e.target.closest('[data-rm]'); if (rm) { S.controls.splice(+rm.dataset.rm, 1); S.weather = null; save(); render(); return; }
+  const im = e.target.closest('[data-imp]'); if (im) { ui.imp = ui.imp === im.dataset.imp ? null : im.dataset.imp; render(); return; }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act;
   if (a.tagName === 'A') e.preventDefault();
-  if (act === 'new') { ui.pending = null; $('#gpxfile').click(); }
+  if (act === 'drw-on') { ui.drawer = true; try { history.pushState({ d: 1 }, ''); } catch (e) {} renderDrawer(); }
+  else if (act === 'drw-off') drwClose();
+  else if (act === 'hw-refresh') { ui.hwErr = ''; homeWx(true); render(); }
+  else if (act === 'drw-go') {
+    const to = a.dataset.to;
+    if (to === 'about') { ui.about = !ui.about; renderDrawer(); return; }
+    drwClose(() => {
+      if (to === 'home') { ui.home = 'list'; render(); }
+      else if (to === 'agenda') { ui.home = 'agenda'; render(); }
+      else if (to === 'new') { ui.pending = null; $('#gpxfile').click(); }
+      else if (to === 'set') { ui.settings = true; try { history.pushState({ s: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
+      else if (to === 'help') { ui.help = true; try { history.pushState({ h: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
+    });
+  }
+  else if (act === 'new') { ui.pending = null; $('#gpxfile').click(); }
   else if (act === 'help-on') { ui.help = true; try { history.pushState({ h: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
   else if (act === 'set-on') { ui.settings = true; try { history.pushState({ s: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
   else if (act === 'set-off') { if (history.state && history.state.s) history.back(); else { ui.settings = false; render(); } }
@@ -1646,15 +1786,18 @@ document.addEventListener('change', e => {
     S.weather = null; save(); render();
   }
 });
-window.addEventListener('popstate', () => { if (ui.settings) { ui.settings = false; render(); return; } if (ui.help) { ui.help = false; render(); return; } if (S) goHome(); });
+window.addEventListener('popstate', () => { if (ui.drawer) { ui.drawer = false; renderDrawer(); const f = ui.afterPop; ui.afterPop = null; f && f(); return; } if (ui.settings) { ui.settings = false; render(); return; } if (ui.help) { ui.help = false; render(); return; } if (S) goHome(); });
 
+const _T0 = Date.now();
 (async function init() {
   await load(); i18nStart(); render(); trAll(document.body);
+  document.getElementById('splash').addEventListener('click', hideSplash); setTimeout(hideSplash, Math.max(400, 2300 - (Date.now() - _T0)));
+  homeWx(false);
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor) navigator.serviceWorker.register('sw.js'); } catch (e) {}
   if (S) { try { history.pushState({ r: 1 }, ''); } catch (e) {} if (S.track) { updateGPS(true); refreshWeather(false); } }
   setInterval(() => { if (!document.hidden && !ui.manual && (!S || ui.tab === 'dash' || ui.tab === 'route' || (S.raceMode && ui.rtab !== 'punch'))) render(); }, 60000);
   setInterval(applyTheme, 120000);
-  document.addEventListener('visibilitychange', () => { applyTheme(); if (!document.hidden && S && S.track) { updateGPS(true); refreshWeather(false); } });
+  document.addEventListener('visibilitychange', () => { applyTheme(); if (!document.hidden && S && S.track) { updateGPS(true); refreshWeather(false); } if (!document.hidden && !S) homeWx(false); });
 })();
 </script>
 </body>
