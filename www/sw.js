@@ -1,4 +1,4 @@
-const C='mybikeplanner-v8',A=['./','index.html','manifest.webmanifest','logo.svg','splash.jpg','icon-192.png','icon-512.png','lib/leaflet.js','lib/leaflet.css'];
+const C='mybikeplanner-v9',A=['./','index.html','manifest.webmanifest','logo.svg','splash.jpg','icon-192.png','icon-512.png','lib/leaflet.js','lib/leaflet.css'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;

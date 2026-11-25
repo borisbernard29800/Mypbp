@@ -21,7 +21,7 @@ Copier sur le téléphone, ouvrir, autoriser les « sources inconnues ». Une mi
 - **Couleur du trajet** : Pente (par défaut : bleu descente, vert < 3 %, jaune 3–6 %, orange 6–9 %, rouge > 9 %) ou Température.
 - **Multilingue** : français, English, Español, Deutsch ; choix au premier lancement (app vierge) puis dans ⚙ Réglages → Langue. Traduction à l'exécution : dictionnaire `TR` + règles `RX` + aide `HELP` dans `index.html` (textes sources en français).
 - **Aide (?)** : manuel intégré à l'app (4 langues).
-- Accueil enrichi : écran d’ouverture avec photo (splash.jpg), menu latéral (☰), météo de la position actuelle en tête d’accueil (Open-Meteo, relevée à l’ouverture, dernière valeur conservée hors connexion), tuiles Strava / Komoot / Garmin / Ride with GPS expliquant l’export GPX puis l’import (pas de connexion directe aux comptes : API fermées ou nécessitant un serveur / accord partenaire).
+- Accueil enrichi : écran d’ouverture avec photo (splash.jpg), menu latéral (☰), météo de la position actuelle en tête d’accueil (Open-Meteo, relevée à l’ouverture, dernière valeur conservée hors connexion) ; boutons ⚙ et ? retirés de l’accueil (dans le menu). Pas de connexion directe à Strava/Komoot/Garmin (API fermées ou nécessitant un serveur) : import par export GPX.
 
 ## Structure
 - `www/index.html` : toute l'application (HTML/JS/CSS). Le bloc `// ==CORE==` … `// ==/CORE==` contient la logique pure (testable sous Node).
