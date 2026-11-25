@@ -1526,7 +1526,7 @@ function renderHelp() {
 function renderHeader() {
   if (S && S.raceMode && S.track && !ui.help && !ui.settings) return;
   $('#hdr').innerHTML = S
-    ? '<button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small><button class="g hbtn" data-act="set-on" aria-label="Réglages">⚙</button><button class="g hbtn" data-act="help-on" aria-label="Aide">?</button>'
+    ? '<button class="g hbtn" data-act="drw-on" aria-label="Menu">☰</button><button class="g back" data-act="home">‹ Circuits</button><div class="hn">' + esc(S.name) + '</div><small>' + fmtT(Date.now()) + '</small>'
     : '<button class="g hbtn" data-act="drw-on" aria-label="Menu">☰</button><span class="lg">' + LOGO + '</span><h1>MyBikePlanner</h1>';
 }
 function render() {
@@ -1658,8 +1658,8 @@ document.addEventListener('click', e => {
     const to = a.dataset.to;
     if (to === 'about') { ui.about = !ui.about; renderDrawer(); return; }
     drwClose(() => {
-      if (to === 'home') { ui.home = 'list'; render(); }
-      else if (to === 'agenda') { ui.home = 'agenda'; render(); }
+      if (to === 'home') { ui.home = 'list'; if (S) goHome(); else render(); }
+      else if (to === 'agenda') { ui.home = 'agenda'; if (S) goHome(); else render(); }
       else if (to === 'new') { ui.pending = null; $('#gpxfile').click(); }
       else if (to === 'set') { ui.settings = true; try { history.pushState({ s: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
       else if (to === 'help') { ui.help = true; try { history.pushState({ h: 1 }, ''); } catch (e) {} render(); window.scrollTo(0, 0); }
